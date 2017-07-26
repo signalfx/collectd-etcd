@@ -61,6 +61,9 @@ LEADER_METRICS_LATENCY = {
 
 
 def read_config(conf, testing="no"):
+    '''
+    Reads the configurations provided by the user
+    '''
     collectd.info("Starting read_config")
 
     plugin_conf = {}
@@ -98,17 +101,18 @@ def read_config(conf, testing="no"):
 
     for key, param in ssl_keys.items():
         if param is None:
+            collectd.info("INFO: (%s) not provided in Configuration" % key)
             del ssl_keys[key]
 
-    collectd.info("Configuration settings:")
+    collectd.info("INFO: Configuration settings:")
 
-    try:
-        for key in required_keys:
-            val = plugin_conf[key]
-            collectd.info("%s : %s" % (key,val))
-    except KeyError, e:
-        collectd.error("ERROR: Missing required key: %s (%s)" % (key,e))
-        return
+    for key in required_keys:
+        val = plugin_conf[key]
+        if val is None:
+            collectd.error("ERROR: Missing required key: %s (%s)" % (key,e))
+            raise ValueError("Missing required config setting: %s" % key)
+        collectd.info("%s : %s" % (key,val))
+
 
     base_url = ("http://%s:%s" % (plugin_conf['Host'],plugin_conf['Port']))
     module_config = {
@@ -131,22 +135,32 @@ def read_config(conf, testing="no"):
 
 
 def str_to_bool(flag):
+    '''
+    Converts true/false to boolean
+    '''
     if flag.lower()=='true':
         return True
     return False
 
 def read_metrics(data):
+    '''
+    Registered read call back function that collects metrics from all endpoints
+    '''
     collectd.info("Starting read_metrics")
     map_id_to_url(data, 'members')
     get_self_metrics(data, 'self')
     get_store_metrics(data, 'store')
-    if data['state']==LEADER:
+    if data['state']==LEADER: # get metrics from leader
         get_leader_metrics(data, 'leader')
-    if data['enhanced_metrics'] or len(data['include_optional_metrics'])>0:
+    if data['enhanced_metrics'] or len(data['include_optional_metrics'])>0: # get optional metrics
         get_optional_metrics(data, 'metrics')
 
 
 def map_id_to_url(data, endpoint):
+    '''
+    etcd uses interval id for each member. This method maps the id to corresponding
+    base url
+    '''
     url = ("%s/v2/%s" % (data['base_url'], endpoint))
     response = get_json_helper(data, url)
 
@@ -156,6 +170,9 @@ def map_id_to_url(data, endpoint):
 
 
 def get_self_metrics(data, endpoint):
+    '''
+    Fetches metrics from the /self endpoint
+    '''
     collectd.info("Getting metrics from self")
     response = get_json(data, endpoint)
 
@@ -170,6 +187,9 @@ def get_self_metrics(data, endpoint):
 
 
 def get_store_metrics(data, endpoint):
+    '''
+    Fetches metrics from the /store endpoint
+    '''
     collectd.info("Getting metrics from store")
     response = get_json(data, endpoint)
 
@@ -189,6 +209,9 @@ def get_store_metrics(data, endpoint):
 
 
 def get_leader_metrics(data, endpoint):
+    '''
+    Fetches metrics from the /leader endpoint
+    '''
     collectd.info("Getting metrics from leader")
     response = get_json(data, endpoint)
 
@@ -208,6 +231,9 @@ def get_leader_metrics(data, endpoint):
 
 
 def get_optional_metrics(data, endpoint):
+    '''
+    Fetches optional metrics from /metrics endpoint
+    '''
     collectd.info("Getting metrics from prometheus")
     url = ("%s/%s" % (data['base_url'], endpoint))
     response = get_text(data, url)
@@ -231,7 +257,7 @@ def get_optional_metrics(data, endpoint):
                 if name in metrics:
                     metrics[name].update({'value':float(str(formatted[1])),'dimensions':dimensions})
 
-        if data['enhanced_metrics']:
+        if data['enhanced_metrics']: # if the bool is true, then exclude metrics that are not required
             for metric in metrics:
                 if metric in data['exclude_optional_metrics']:
                     continue
@@ -240,7 +266,7 @@ def get_optional_metrics(data, endpoint):
 
                 prepare_and_dispatch_metric(metrics[metric]['name'], metrics[metric]['value'], metrics[metric]['type'], plugin_instance)
         else:
-            for metric in data['include_optional_metrics']:
+            for metric in data['include_optional_metrics']: # include only the required metrics
                 if metric in metrics:
                     default_dimensions = {'state': data['state']}
                     plugin_instance = prepare_plugin_instance(data, default_dimensions, ('%s%s' % (',', metrics[metric]['dimensions'])))
@@ -249,6 +275,9 @@ def get_optional_metrics(data, endpoint):
 
 
 def prepare_plugin_instance(data, default_dimensions, more_dimensions=''):
+    '''
+    Prepares the plugin instance string to be passed to collectd
+    '''
     default_dimensions.update(data['custom_dimensions']) # add custom dimensions to the list of dimensions
     default_dimensions = format_dimensions(default_dimensions, ('%s%s' % (',', more_dimensions)))
     return ("%s%s" % (data['member_id'], default_dimensions))
@@ -256,12 +285,18 @@ def prepare_plugin_instance(data, default_dimensions, more_dimensions=''):
 
 
 def get_json(data, endpoint):
+    '''
+    Returns json
+    '''
     collectd.info("Fetching %s endpoint" % endpoint)
     url = ("%s/v2/stats/%s" % (data['base_url'], endpoint))
     return get_json_helper(data, url)
 
 
 def get_json_helper(data, url):
+    '''
+    Makes the API call and prepares the json to be returned
+    '''
     try:
         (certificate, verify) = get_ssl_params(data)
         response = requests.get(url, verify=verify, cert=certificate)
@@ -279,6 +314,9 @@ def get_json_helper(data, url):
 
 
 def get_text(data, url):
+    '''
+    Makes the API call and returns the text (for optional metrics)
+    '''
     try:
         (certificate, verify) = get_ssl_params(data)
         response = requests.get(url, verify=verify, cert=certificate)
@@ -292,6 +330,9 @@ def get_text(data, url):
 
 
 def get_ssl_params(data):
+    '''
+    Helper method to prepare auth tuple
+    '''
     certificate = None
     verify = None
     ssl_keys = data['ssl_keys']
@@ -305,6 +346,9 @@ def get_ssl_params(data):
 
 
 def prepare_and_dispatch_metric(name, value, type, dimensions):
+    '''
+    Prepares and dispatches a metric
+    '''
     collectd.info("Starting prepare_and_dispatch_metrics")
     data_point = collectd.Values(plugin="test-etcd")
     data_point.type_instance = name
@@ -324,12 +368,18 @@ def prepare_and_dispatch_metric(name, value, type, dimensions):
 
 # For debugging
 def prepare_and_print_metric(name, value, type, dimensions):
+    '''
+    Prints out metrics in string format
+    '''
     collectd.info("Starting prepare_and_print_metrics")
     out = ("{ name : %s, value : %s, type : %s, dimension : %s}" % (name, value, type, dimensions))
     return out
 
 
 def format_dimensions(dimension, more=""):
+    '''
+    Formats dimensions before fed to collectd plugin instance
+    '''
     collectd.info("Starting format_dimensions")
     formatted = []
     formatted.extend(("%s=%s" % (k,v)) for k,v in dimension.iteritems())
