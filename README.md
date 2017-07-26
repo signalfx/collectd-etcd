@@ -1,7 +1,9 @@
 # Collectd etcd Plugin
-An etcd Collectd plugin which users can use to send metrics from etcd instances to SignalFx
 
-# Configuration
+## Introduction
+An etcd [Collectd](http://www.collectd.org/) plugin which users can use to send metrics from etcd instances to SignalFx
+
+## Configuration
 The following are required configuration keys:
 
 *Host - Required. Hostname or IP address of the etcd member, default is 'localhost'
