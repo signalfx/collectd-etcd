@@ -7,13 +7,14 @@ import sys
 LEADER = "StateLeader"
 FOLLOWER = "StateFollower"
 DEFAULT_INTERVAL = 10
+DEFAULT_API_TIMEOUT = 10
 
-Metric = collections.namedtuple('Metric', ('name','type'))
+Metric = collections.namedtuple('Metric', ('name', 'type'))
 
 
 SELF_METRICS = {
     'recvAppendRequestCnt': Metric('etcd.self.recvappendreq.cnt', 'counter'),
-    'sendAppendRequestCnt': Metric('etcd.self.sendappendreq.cnt','counter'),
+    'sendAppendRequestCnt': Metric('etcd.self.sendappendreq.cnt', 'counter'),
     'recvPkgRate': Metric('etcd.self.recvpkg.rate', 'gauge'),
     'recvBandwidthRate': Metric('etcd.self.recvbandwidth.rate', 'gauge'),
     'sendPkgRate': Metric('etcd.self.sendpkg.rate', 'gauge'),
@@ -72,31 +73,32 @@ def read_config(conf, testing="no"):
     enhanced_metrics = False
     exclude_optional_metrics = set()
     include_optional_metrics = set()
+    http_timeout = DEFAULT_API_TIMEOUT
 
-    required_keys = {'Host','Port','Cluster'} #Check if there's other options!
-    optional_keys = {'Interval','Dimension','EnhancedMetrics','IncludeMetric','ExcludeMetric'}
-    ssl_keys = {'ssl_keyfile': None, 'ssl_certificate': None, 'ssl_cert_validation': None, 'ssl_ca_certs': None} #TO-DO!
+    required_keys = {'Host', 'Port', 'Cluster'}
+    optional_keys = {'Interval', 'Dimension', 'EnhancedMetrics', 'IncludeMetric', 'ExcludeMetric'}
+    ssl_keys = {'ssl_keyfile': None, 'ssl_certificate': None, 'ssl_cert_validation': None, 'ssl_ca_certs': None}
 
     for val in conf.children:
         if val.key in required_keys:
             plugin_conf[val.key] = val.values[0]
-        elif val.key in optional_keys and val.key=='Interval' and val.values[0]:
+        elif val.key in optional_keys and val.key == 'Interval' and val.values[0]:
             interval = val.values[0]
-        elif val.key in optional_keys and val.key=='Dimension' and len(val.values)==2:
-            custom_dimensions.update({val.values[0]:val.values[1]})
-        elif val.key in optional_keys and val.key=='EnhancedMetrics' and val.values[0]:
+        elif val.key in optional_keys and val.key == 'Dimension' and len(val.values) == 2:
+            custom_dimensions.update({val.values[0]: val.values[1]})
+        elif val.key in optional_keys and val.key == 'EnhancedMetrics' and val.values[0]:
             enhanced_metrics = str_to_bool(val.values[0])
-        elif val.key in optional_keys and val.key=='IncludeMetric' and val.values[0]:
+        elif val.key in optional_keys and val.key == 'IncludeMetric' and val.values[0]:
             include_optional_metrics.add(val.values[0])
-        elif val.key in optional_keys and val.key=='ExcludeMetric' and val.values[0]:
+        elif val.key in optional_keys and val.key == 'ExcludeMetric' and val.values[0]:
             exclude_optional_metrics.add(val.values[0])
-        elif val.key in ssl_keys and val.key=='ssl_keyfile' and val.values[0]:
+        elif val.key in ssl_keys and val.key == 'ssl_keyfile' and val.values[0]:
             ssl_keys['ssl_keyfile'] = val.values[0]
-        elif val.key in ssl_keys and val.key=='ssl_certificate' and val.values[0]:
+        elif val.key in ssl_keys and val.key == 'ssl_certificate' and val.values[0]:
             ssl_keys['ssl_certificate'] = val.values[0]
-        elif val.key in ssl_keys and val.key=='ssl_cert_validation' and val.values[0]:
+        elif val.key in ssl_keys and val.key == 'ssl_cert_validation' and val.values[0]:
             ssl_keys['ssl_cert_validation'] = val.values[0]
-        elif val.key in ssl_keys and val.key=='ssl_ca_certs' and val.values[0]:
+        elif val.key in ssl_keys and val.key == 'ssl_ca_certs' and val.values[0]:
             ssl_keys['ssl_ca_certs'] = val.values[0]
 
     for key, param in ssl_keys.items():
@@ -109,12 +111,11 @@ def read_config(conf, testing="no"):
     for key in required_keys:
         val = plugin_conf[key]
         if val is None:
-            collectd.error("ERROR: Missing required key: %s (%s)" % (key,e))
+            collectd.error("ERROR: Missing required key: %s (%s)" % (key, e))
             raise ValueError("Missing required config setting: %s" % key)
-        collectd.info("%s : %s" % (key,val))
+        collectd.info("%s : %s" % (key, val))
 
-
-    base_url = ("http://%s:%s" % (plugin_conf['Host'],plugin_conf['Port']))
+    base_url = ("http://%s:%s" % (plugin_conf['Host'], plugin_conf['Port']))
     module_config = {
             'state': None,
             'member_id': ("%s:%s" % (plugin_conf['Host'], plugin_conf['Port'])),
@@ -122,13 +123,14 @@ def read_config(conf, testing="no"):
             'interval': interval,
             'ssl_keys': ssl_keys,
             'base_url': base_url,
+            'http_timeout': http_timeout,
             'custom_dimensions': custom_dimensions,
             'enhanced_metrics': enhanced_metrics,
             'include_optional_metrics': include_optional_metrics,
             'exclude_optional_metrics': exclude_optional_metrics
             }
 
-    if testing=="yes":
+    if testing == "yes":
         return module_config
 
     collectd.register_read(read_metrics, interval, data=module_config, name=module_config['member_id'])
@@ -138,9 +140,10 @@ def str_to_bool(flag):
     '''
     Converts true/false to boolean
     '''
-    if flag.lower()=='true':
+    if flag.lower() == 'true':
         return True
     return False
+
 
 def read_metrics(data):
     '''
@@ -150,9 +153,9 @@ def read_metrics(data):
     map_id_to_url(data, 'members')
     get_self_metrics(data, 'self')
     get_store_metrics(data, 'store')
-    if data['state']==LEADER: # get metrics from leader
+    if data['state'] == LEADER:    # get metrics from leader
         get_leader_metrics(data, 'leader')
-    if data['enhanced_metrics'] or len(data['include_optional_metrics'])>0: # get optional metrics
+    if data['enhanced_metrics'] or len(data['include_optional_metrics'])>0:   # get optional metrics
         get_optional_metrics(data, 'metrics')
 
 
@@ -183,7 +186,8 @@ def get_self_metrics(data, endpoint):
 
         for key in SELF_METRICS:
             if key in response:
-                prepare_and_dispatch_metric(SELF_METRICS[key].name, response[key], SELF_METRICS[key].type, plugin_instance)
+                prepare_and_dispatch_metric(SELF_METRICS[key].name, response[key],
+                SELF_METRICS[key].type, plugin_instance)
 
 
 def get_store_metrics(data, endpoint):
@@ -199,13 +203,15 @@ def get_store_metrics(data, endpoint):
 
         for key in STORE_METRICS:
             if key in response:
-                prepare_and_dispatch_metric(STORE_METRICS[key].name, response[key], STORE_METRICS[key].type, plugin_instance)
+                prepare_and_dispatch_metric(STORE_METRICS[key].name, response[key],
+                STORE_METRICS[key].type, plugin_instance)
 
         # Modification operations on the store are global to all the members. Only leader reports those.
         if data['state']==LEADER:
             for key in STORE_METRICS_LEADER:
                 if key in response:
-                    prepare_and_dispatch_metric(STORE_METRICS_LEADER[key].name, response[key], STORE_METRICS_LEADER[key].type, plugin_instance)
+                    prepare_and_dispatch_metric(STORE_METRICS_LEADER[key].name, response[key],
+                    STORE_METRICS_LEADER[key].type, plugin_instance)
 
 
 def get_leader_metrics(data, endpoint):
@@ -215,19 +221,27 @@ def get_leader_metrics(data, endpoint):
     collectd.info("Getting metrics from leader")
     response = get_json(data, endpoint)
 
-    if response and len(response['followers']) > 0:
-        followers = response['followers']
-        for follower in followers:
-            default_dimensions = {'state': data['state'],'follower': data[follower][7:]}
-            plugin_instance = prepare_plugin_instance(data, default_dimensions)
+    if response:
+        try:
+            if len(response['followers']) > 0:
+                followers = response['followers']
+                for follower in followers:
+                    default_dimensions = {'state': data['state'], 'follower': data[follower][7:]}
+                    plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
-            for key in LEADER_METRICS_COUNTS:
-                if key in followers[follower]['counts']:
-                    prepare_and_dispatch_metric(LEADER_METRICS_COUNTS[key].name, followers[follower]['counts'][key], LEADER_METRICS_COUNTS[key].type, plugin_instance)
+                    for key in LEADER_METRICS_COUNTS:
+                        if key in followers[follower]['counts']:
+                            prepare_and_dispatch_metric(LEADER_METRICS_COUNTS[key].name,
+                            followers[follower]['counts'][key], LEADER_METRICS_COUNTS[key].type, plugin_instance)
 
-            for key in LEADER_METRICS_LATENCY:
-                if key in followers[follower]['latency']:
-                    prepare_and_dispatch_metric(LEADER_METRICS_LATENCY[key].name, followers[follower]['latency'][key], LEADER_METRICS_LATENCY[key].type, plugin_instance)
+                    for key in LEADER_METRICS_LATENCY:
+                        if key in followers[follower]['latency']:
+                            prepare_and_dispatch_metric(LEADER_METRICS_LATENCY[key].name,
+                            followers[follower]['latency'][key], LEADER_METRICS_LATENCY[key].type, plugin_instance)
+        except KeyError, e:
+            # leader may have changed between quering the /self endpoint and now
+            collectd.warning("WARNING: %s is no longer leader (%s)" % (data['base_url'], e))
+            pass
 
 
 def get_optional_metrics(data, endpoint):
@@ -243,45 +257,49 @@ def get_optional_metrics(data, endpoint):
         for line in response.splitlines():
             formatted = line.split(' ')
 
-            if formatted[1]=='TYPE' and formatted[3] not in ('histogram', 'summary'):
-                metric = {'name':str(formatted[2]).replace('_', '.'), 'type': str(formatted[3])}
+            if formatted[1] == 'TYPE' and formatted[3] not in ('histogram', 'summary'):
+                metric = {'name': str(formatted[2]).replace('_', '.'), 'type': str(formatted[3])}
                 metrics[formatted[2]] = metric
                 continue
-            if len(formatted)==2:
+            if len(formatted) == 2:
                 name_and_dimensions = str(formatted[0]).split('{')
                 name = formatted[0]
                 dimensions = ''
-                if len(name_and_dimensions)>1:
+                if len(name_and_dimensions) > 1:
                     name = name_and_dimensions[0]
-                    dimensions = name_and_dimensions[1].replace('}','').replace('\"','')
+                    dimensions = name_and_dimensions[1].replace('}', '').replace('\"', '')
                 if name in metrics:
-                    metrics[name].update({'value':float(str(formatted[1])),'dimensions':dimensions})
+                    metrics[name].update({'value': float(str(formatted[1])), 'dimensions': dimensions})
 
-        if data['enhanced_metrics']: # if the bool is true, then exclude metrics that are not required
+        if data['enhanced_metrics']:    # if the bool is true, then exclude metrics that are not required
             for metric in metrics:
+                print metrics[metric]
                 if metric in data['exclude_optional_metrics']:
                     continue
                 default_dimensions = {'state': data['state']}
-                plugin_instance = prepare_plugin_instance(data, default_dimensions, ('%s%s' % (',', metrics[metric]['dimensions'])))
+                plugin_instance = prepare_plugin_instance(data, default_dimensions,
+                                    ('%s%s' % (',', metrics[metric]['dimensions'])))
 
-                prepare_and_dispatch_metric(metrics[metric]['name'], metrics[metric]['value'], metrics[metric]['type'], plugin_instance)
+                prepare_and_dispatch_metric(metrics[metric]['name'], metrics[metric]['value'],
+                                                metrics[metric]['type'], plugin_instance)
         else:
-            for metric in data['include_optional_metrics']: # include only the required metrics
+            for metric in data['include_optional_metrics']:   # include only the required metrics
                 if metric in metrics:
                     default_dimensions = {'state': data['state']}
-                    plugin_instance = prepare_plugin_instance(data, default_dimensions, ('%s%s' % (',', metrics[metric]['dimensions'])))
+                    plugin_instance = prepare_plugin_instance(data, default_dimensions,
+                                        ('%s%s' % (',', metrics[metric]['dimensions'])))
 
-                    prepare_and_dispatch_metric(metrics[metric]['name'], metrics[metric]['value'], metrics[metric]['type'], plugin_instance)
+                    prepare_and_dispatch_metric(metrics[metric]['name'], metrics[metric]['value'],
+                                                metrics[metric]['type'], plugin_instance)
 
 
 def prepare_plugin_instance(data, default_dimensions, more_dimensions=''):
     '''
     Prepares the plugin instance string to be passed to collectd
     '''
-    default_dimensions.update(data['custom_dimensions']) # add custom dimensions to the list of dimensions
-    default_dimensions = format_dimensions(default_dimensions, ('%s%s' % (',', more_dimensions)))
+    default_dimensions.update(data['custom_dimensions'])  # add custom dimensions to the list of dimensions
+    default_dimensions = format_dimensions(default_dimensions, (more_dimensions))
     return ("%s%s" % (data['member_id'], default_dimensions))
-
 
 
 def get_json(data, endpoint):
@@ -297,19 +315,11 @@ def get_json_helper(data, url):
     '''
     Makes the API call and prepares the json to be returned
     '''
-    try:
-        (certificate, verify) = get_ssl_params(data)
-        response = requests.get(url, verify=verify, cert=certificate)
-    except requests.exceptions.RequestException as e:
-        collectd.error("ERROR: API call failed: (%s) %s" % (e,url))
-        return
-    except requests.exceptions.Timeout as e:
-        collectd.warning("WARNING: API call timed out: (%s) %s" % (e,url))
-        return
+    response = make_api_call(data, url)
     try:
         return response.json()
     except ValueError, e:
-        collectd.error("ERROR: JSON parsing failed: (%s) %s" % (e,url))
+        collectd.error("ERROR: JSON parsing failed: (%s) %s" % (e, url))
         return
 
 
@@ -317,15 +327,20 @@ def get_text(data, url):
     '''
     Makes the API call and returns the text (for optional metrics)
     '''
+    response = make_api_call(data, url)
+    return response.text
+
+
+def make_api_call(data, url):
     try:
         (certificate, verify) = get_ssl_params(data)
-        response = requests.get(url, verify=verify, cert=certificate)
-        return response.text
-    except requests.exceptions.RequestException as e:
-        collectd.error("ERROR: API call failed: (%s) %s" % (e,url))
+        response = requests.get(url, verify=verify, cert=certificate, timeout=data['http_timeout'])
+        return response
+    except requests.exceptions.RequestException, e:
+        collectd.error("ERROR: API call failed: (%s) %s" % (e, url))
         return
-    except requests.exceptions.Timeout as e:
-        collectd.warning("WARNING: API call timed out: (%s) %s" % (e,url))
+    except requests.exceptions.Timeout, e:
+        collectd.warning("WARNING: API call timed out: (%s) %s" % (e, url))
         return
 
 
@@ -362,7 +377,7 @@ def prepare_and_dispatch_metric(name, value, type, dimensions):
     # https://github.com/collectd/collectd/issues/716
     data_point.meta = {'true': 'true'}
 
-    # data_point.dispatch() for testing!
+    # data_point.dispatch()
     collectd.info("DISPATCHED: %s" % prepare_and_print_metric(name, value, type, dimensions))
 
 
@@ -376,14 +391,15 @@ def prepare_and_print_metric(name, value, type, dimensions):
     return out
 
 
-def format_dimensions(dimension, more=""):
+def format_dimensions(dimension, more=''):
     '''
     Formats dimensions before fed to collectd plugin instance
     '''
     collectd.info("Starting format_dimensions")
     formatted = []
-    formatted.extend(("%s=%s" % (k,v)) for k,v in dimension.iteritems())
-    return ('[%s%s]' % (str(formatted).replace('\'','').replace(' ','').replace("\"",'').replace('[','').replace(']',''), '' if len(more)==1 else more))
+    formatted.extend(("%s=%s" % (k, v)) for k, v in dimension.iteritems())
+    return ('[%s%s]' % (str(formatted).replace('\'', '').replace(' ', '').replace("\"", '').
+            replace('[', '').replace(']', ''), '' if len(more) == 1 else more))
 
 
 if __name__ == "__main__":
