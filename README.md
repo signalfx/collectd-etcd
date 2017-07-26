@@ -6,16 +6,16 @@ An etcd [Collectd](http://www.collectd.org/) plugin which users can use to send 
 ## Configuration
 The following are required configuration keys:
 
-*Host - Required. Hostname or IP address of the etcd member, default is 'localhost'
-*Port - Required. The port of the etcd member, default is '2379'
-*Cluster - Required. The cluster to which the member
+* Host - Required. Hostname or IP address of the etcd member, default is 'localhost'
+* Port - Required. The port of the etcd member, default is '2379'
+* Cluster - Required. The cluster to which the member
 
 Optional configurations keys include:
 
-*Interval - Interval between metric calls. Default is 10s
-*EnhancedMetrics - Flag to specify whether stats from the ```/metrics``` endpoint are needed. Default is False
-*IncludeMetric - Metrics from the ```/metrics``` endpoint can be included individually
-*ExcludeMetric - Metrics from the ```/metrics``` endpoint can be excluded individually
+* Interval - Interval between metric calls. Default is 10s
+* EnhancedMetrics - Flag to specify whether stats from the ```/metrics``` endpoint are needed. Default is False
+* IncludeMetric - Metrics from the ```/metrics``` endpoint can be included individually
+* ExcludeMetric - Metrics from the ```/metrics``` endpoint can be excluded individually
 ```
 LoadPlugin python
 <Plugin python>
