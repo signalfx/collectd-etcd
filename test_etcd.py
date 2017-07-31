@@ -3,8 +3,8 @@ import collections
 import mock
 import sys
 import pytest
-
 import sample_responses
+
 
 class MockCollectd(mock.MagicMock):
     """
@@ -23,7 +23,8 @@ class MockCollectd(mock.MagicMock):
 
 def mock_api_call(data, url):
     parsed_url = url.split('/')
-    return getattr(sample_responses,parsed_url[-1])   # one of the endpoints that the plugin needs
+    # one of the endpoints that the plugin needs
+    return getattr(sample_responses, parsed_url[-1])
 
 
 sys.modules['collectd'] = MockCollectd()
@@ -76,6 +77,7 @@ def test_optional_metrics_on():
 @mock.patch('etcd_plugin.get_text', mock_api_call)
 def test_optional_metrics_off():
     etcd_plugin.read_metrics(etcd_plugin.read_config(mock_config_enhanced_metrics_on))
+
 
 mock_config = mock.Mock()
 mock_config.children = [

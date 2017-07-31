@@ -2,13 +2,12 @@
 import requests
 import collections
 import collectd
-import sys
 
 
 LEADER = "StateLeader"
 FOLLOWER = "StateFollower"
 DEFAULT_INTERVAL = 10
-DEFAULT_API_TIMEOUT = 10
+DEFAULT_API_TIMEOUT = 60
 
 Metric = collections.namedtuple('Metric', ('name', 'type'))
 
@@ -111,7 +110,7 @@ def read_config(conf):
         try:
             val = plugin_conf[key]
             collectd.info("%s : %s" % (key, val))
-        except KeyError, e:
+        except KeyError:
             raise KeyError("Missing required config setting: %s" % key)
 
     base_url = ("http://%s:%s" % (plugin_conf['Host'], plugin_conf['Port']))
@@ -156,7 +155,7 @@ def read_metrics(data):
     get_store_metrics(data, 'store')
     if data['state'] == LEADER:    # get metrics from leader
         get_leader_metrics(data, 'leader')
-    if data['enhanced_metrics'] or len(data['include_optional_metrics'])>0:   # get optional metrics
+    if data['enhanced_metrics'] or len(data['include_optional_metrics']) > 0:   # get optional metrics
         get_optional_metrics(data, 'metrics')
 
 
@@ -182,8 +181,8 @@ def get_self_metrics(data, endpoint):
     response = get_json(data, endpoint)
 
     if response:
-        data['state'] = LEADER if LEADER==response['state'] else FOLLOWER
-        default_dimensions = {'state': data['state']}
+        data['state'] = LEADER if LEADER ==     response['state'] else FOLLOWER
+        default_dimensions = {'state': data['state'], 'cluster': data['plugin_conf']['Cluster']}
         plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
         for key in SELF_METRICS:
@@ -200,7 +199,7 @@ def get_store_metrics(data, endpoint):
     response = get_json(data, endpoint)
 
     if response:
-        default_dimensions = {'state': data['state']}
+        default_dimensions = {'state': data['state'], 'cluster': data['plugin_conf']['Cluster']}
         plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
         for key in STORE_METRICS:
@@ -209,7 +208,7 @@ def get_store_metrics(data, endpoint):
                 STORE_METRICS[key].type, plugin_instance)
 
         # Modification operations on the store are global to all the members. Only leader reports those.
-        if data['state']==LEADER:
+        if data['state'] == LEADER:
             for key in STORE_METRICS_LEADER:
                 if key in response:
                     prepare_and_dispatch_metric(STORE_METRICS_LEADER[key].name, response[key],
@@ -225,7 +224,9 @@ def get_leader_metrics(data, endpoint):
 
     if response:
         for follower, value in response.get('followers', {}).iteritems():
-            default_dimensions = {'state': data['state'], 'follower': data[follower][7:]}
+            default_dimensions = {'state': data['state'],
+                                'follower': data[follower][7:],
+                                'cluster': data['plugin_conf']['Cluster']}
             plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
             for key in LEADER_METRICS_COUNTS:
@@ -250,8 +251,7 @@ def get_optional_metrics(data, endpoint):
     if response:
         metrics = {}
         transform_text_to_metrics(response, metrics)
-
-        default_dimensions = {'state': data['state']}
+        default_dimensions = {'state': data['state'], 'cluster': data['plugin_conf']['Cluster']}
 
         if data['enhanced_metrics']:    # if the bool is true, then exclude metrics that are not required
             for metric in metrics:
@@ -315,7 +315,8 @@ def get_json_helper(data, url):
     '''
     response = make_api_call(data, url)
     try:
-        return response.json()
+        if response:
+            return response.json()
     except ValueError, e:
         collectd.error("ERROR: JSON parsing failed: (%s) %s" % (e, url))
         return
@@ -326,20 +327,20 @@ def get_text(data, url):
     Makes the API call and returns the text (for optional metrics)
     '''
     response = make_api_call(data, url)
-    return response.text
+    if response:
+        return response.text
 
 
 def make_api_call(data, url):
+    collectd.info("GETTING THIS  URL %s" % url)
     try:
         (certificate, verify) = get_ssl_params(data)
         response = requests.get(url, verify=verify, cert=certificate, timeout=data['http_timeout'])
         return response
     except requests.exceptions.RequestException, e:
         collectd.error("ERROR: API call failed: (%s) %s" % (e, url))
-        return
     except requests.exceptions.Timeout, e:
         collectd.warning("WARNING: API call timed out: (%s) %s" % (e, url))
-        return
 
 
 def get_ssl_params(data):
@@ -374,16 +375,15 @@ def prepare_and_dispatch_metric(name, value, type, dimensions):
     # https://github.com/collectd/collectd/issues/716
     data_point.meta = {'true': 'true'}
 
-    # data_point.dispatch()
-    collectd.info("DISPATCHED: %s" % prepare_and_print_metric(name, value, type, dimensions))
+    data_point.dispatch()
+    collectd.info("DISPATCHED: %s" % prepare_and_print_metric(name, value, type, dimensions, dimensions))
 
 
-# For debugging
-def prepare_and_print_metric(name, value, type, dimensions):
+def prepare_and_print_metric(name, value, type, dimensions, plugin_instance):
     '''
     Prints out metrics in string format
     '''
-    out = ("{ name : %s, value : %s, type : %s, dimension : %s}" % (name, value, type, dimensions))
+    out = ("{ name : %s, value : %s, type : %s, dimension : %s, plugin_instance: %s}" % (name, value, type, dimensions, plugin_instance))
     return out
 
 
