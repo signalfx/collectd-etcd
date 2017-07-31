@@ -1,4 +1,4 @@
 FROM python:2
 
-ADD test1.py /opt/test1.py
-CMD python -u /opt/test1.py
+ADD test.py /opt/test.py
+CMD python -u /opt/test.py
