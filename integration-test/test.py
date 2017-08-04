@@ -16,6 +16,7 @@ ETCD_HOSTS = [
     'etcd238',
     'etcd310',
     'etcd324',
+    'etcd208'
 ]
 TIMEOUT_SECS = 60
 

@@ -3,6 +3,12 @@
 ## Introduction
 An etcd [Collectd](http://www.collectd.org/) plugin which users can use to send metrics from etcd instances to SignalFx
 
+## Requirements
+
+* Collectd 4.9 or later (for the Python plugin)
+* Python 2.7 or later
+* etcd 2.0.8 or later
+
 ## Configuration
 The following are required configuration keys:
 

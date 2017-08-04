@@ -8,7 +8,7 @@ wait_for () {
     done
 }
 
-for host in etcd238 etcd310 etcd324
+for host in etcd208 etcd238 etcd310 etcd324
 do
   wait_for $host
 done
