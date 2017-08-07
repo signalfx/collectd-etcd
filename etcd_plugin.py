@@ -4,7 +4,7 @@ import collections
 import collectd
 import six
 
-print "START PLUGIN CODE"
+
 LEADER = "StateLeader"
 FOLLOWER = "StateFollower"
 DEFAULT_INTERVAL = 10
@@ -90,12 +90,11 @@ LEADER_METRICS_LATENCY = {
         Metric('etcd.leader.latency.stddev', 'gauge')
 }
 
-print "SET ALL METRICS"
+
 def read_config(conf):
     '''
     Reads the configurations provided by the user
     '''
-    print "READ CONFIG"
     plugin_conf = {}
     cluster = 'default'
     interval = DEFAULT_INTERVAL
@@ -214,7 +213,7 @@ def map_id_to_url(data, endpoint):
     etcd uses interval id for each member. This method
     maps the id to corresponding base url
     '''
-    collectd.debug("DEBUGGING: %s" % data)
+    # collectd.debug("DEBUGGING: %s" % data)
     url = ("%s/v2/%s" % (data['base_url'], endpoint))
     response = get_json_helper(data, url)
 
@@ -227,7 +226,7 @@ def get_self_metrics(data, endpoint):
     '''
     Fetches metrics from the /self endpoint
     '''
-    collectd.info("INFO: METRICS FROM SELF ENDPOINT")
+    collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
     response = get_json(data, endpoint)
 
     if response:
@@ -245,7 +244,7 @@ def get_store_metrics(data, endpoint):
     '''
     Fetches metrics from the /store endpoint
     '''
-    collectd.info("INFO: METRICS FROM STORE ENDPOINT")
+    collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
     response = get_json(data, endpoint)
 
     if response:
@@ -269,7 +268,7 @@ def get_leader_metrics(data, endpoint):
     '''
     Fetches metrics from the /leader endpoint
     '''
-    collectd.info("INFO: METRICS FROM LEADER ENDPOINT")
+    collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
     response = get_json(data, endpoint)
 
     if response:
@@ -294,7 +293,7 @@ def get_optional_metrics(data, endpoint):
     '''
     Fetches optional metrics from /metrics endpoint
     '''
-    collectd.info("INFO: METRICS FROM METRICS ENDPOINT")
+    collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
     url = ("%s/%s" % (data['base_url'], endpoint))
     response = get_text(data, url)
 

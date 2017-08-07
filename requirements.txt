@@ -1,5 +1,2 @@
-flake8
-pytest
-mock
 requests
 six
