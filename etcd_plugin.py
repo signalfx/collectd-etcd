@@ -2,6 +2,7 @@
 import requests
 import collections
 import collectd
+import six
 
 
 LEADER = "StateLeader"
@@ -13,51 +14,80 @@ Metric = collections.namedtuple('Metric', ('name', 'type'))
 
 
 SELF_METRICS = {
-    'recvAppendRequestCnt': Metric('etcd.self.recvappendreq.cnt', 'counter'),
-    'sendAppendRequestCnt': Metric('etcd.self.sendappendreq.cnt', 'counter'),
-    'recvPkgRate': Metric('etcd.self.recvpkg.rate', 'gauge'),
-    'recvBandwidthRate': Metric('etcd.self.recvbandwidth.rate', 'gauge'),
-    'sendPkgRate': Metric('etcd.self.sendpkg.rate', 'gauge'),
-    'sendBandwidthRate': Metric('etcd.self.sendbandwidth.rate', 'gauge')
+    'recvAppendRequestCnt':
+        Metric('etcd.self.recvappendreq.cnt', 'counter'),
+    'sendAppendRequestCnt':
+        Metric('etcd.self.sendappendreq.cnt', 'counter'),
+    'recvPkgRate':
+        Metric('etcd.self.recvpkg.rate', 'gauge'),
+    'recvBandwidthRate':
+        Metric('etcd.self.recvbandwidth.rate', 'gauge'),
+    'sendPkgRate':
+        Metric('etcd.self.sendpkg.rate', 'gauge'),
+    'sendBandwidthRate':
+        Metric('etcd.self.sendbandwidth.rate', 'gauge')
 }
 
 
 STORE_METRICS_LEADER = {
-    'compareAndDeleteFail': Metric('etcd.store.compareanddelete.fail', 'counter'),
-    'compareAndDeleteSuccess': Metric('etcd.store.compareanddelete.success', 'counter'),
-    'compareAndSwapFail': Metric('etcd.store.compareandswap.fail', 'counter'),
-    'compareAndSwapSuccess': Metric('etcd.store.compareandswap.success', 'counter'),
-    'createFail': Metric('etcd.store.create.fail', 'counter'),
-    'createSuccess': Metric('etcd.store.create.success', 'counter'),
-    'deleteFail': Metric('etcd.store.delete.fail', 'counter'),
-    'deleteSuccess': Metric('etcd.store.delete.success', 'counter'),
-    'updateFail': Metric('etcd.store.update.fail', 'counter'),
-    'updateSuccess': Metric('etcd.store.update.success', 'counter'),
-    'setsFail': Metric('etcd.store.sets.fail', 'counter'),
-    'setsSuccess': Metric('etcd.store.sets.success', 'counter')
+    'compareAndDeleteFail':
+        Metric('etcd.store.compareanddelete.fail', 'counter'),
+    'compareAndDeleteSuccess':
+        Metric('etcd.store.compareanddelete.success', 'counter'),
+    'compareAndSwapFail':
+        Metric('etcd.store.compareandswap.fail', 'counter'),
+    'compareAndSwapSuccess':
+        Metric('etcd.store.compareandswap.success', 'counter'),
+    'createFail':
+        Metric('etcd.store.create.fail', 'counter'),
+    'createSuccess':
+        Metric('etcd.store.create.success', 'counter'),
+    'deleteFail':
+        Metric('etcd.store.delete.fail', 'counter'),
+    'deleteSuccess':
+        Metric('etcd.store.delete.success', 'counter'),
+    'updateFail':
+        Metric('etcd.store.update.fail', 'counter'),
+    'updateSuccess':
+        Metric('etcd.store.update.success', 'counter'),
+    'setsFail':
+        Metric('etcd.store.sets.fail', 'counter'),
+    'setsSuccess':
+        Metric('etcd.store.sets.success', 'counter')
 }
 
 
 STORE_METRICS = {
-    'getsFail': Metric('etcd.store.gets.fail', 'counter'),
-    'getsSuccess': Metric('etcd.store.gets.success', 'counter'),
-    'expireCount': Metric('etcd.store.expire.count', 'counter'),
-    'watchers': Metric('etcd.store.watchers', 'gauge')
+    'getsFail':
+        Metric('etcd.store.gets.fail', 'counter'),
+    'getsSuccess':
+        Metric('etcd.store.gets.success', 'counter'),
+    'expireCount':
+        Metric('etcd.store.expire.count', 'counter'),
+    'watchers':
+        Metric('etcd.store.watchers', 'gauge')
 }
 
 
 LEADER_METRICS_COUNTS = {
-    'fail': Metric('etcd.leader.counts.fail', 'counter'),
-    'success': Metric('etcd.leader.counts.success', 'counter')
+    'fail':
+        Metric('etcd.leader.counts.fail', 'counter'),
+    'success':
+        Metric('etcd.leader.counts.success', 'counter')
 }
 
 
 LEADER_METRICS_LATENCY = {
-    'average': Metric('etcd.leader.latency.average', 'gauge'),
-    'current': Metric('etcd.leader.latency.current', 'gauge'),
-    'maximum': Metric('etcd.leader.latency.max', 'gauge'),
-    'minimum': Metric('etcd.leader.latency.min', 'gauge'),
-    'standardDeviation': Metric('etcd.leader.latency.stddev', 'gauge')
+    'average':
+        Metric('etcd.leader.latency.average', 'gauge'),
+    'current':
+        Metric('etcd.leader.latency.current', 'gauge'),
+    'maximum':
+        Metric('etcd.leader.latency.max', 'gauge'),
+    'minimum':
+        Metric('etcd.leader.latency.min', 'gauge'),
+    'standardDeviation':
+        Metric('etcd.leader.latency.stddev', 'gauge')
 }
 
 
@@ -66,6 +96,7 @@ def read_config(conf):
     Reads the configurations provided by the user
     '''
     plugin_conf = {}
+    cluster = 'default'
     interval = DEFAULT_INTERVAL
     custom_dimensions = {}
     enhanced_metrics = False
@@ -73,25 +104,39 @@ def read_config(conf):
     include_optional_metrics = set()
     http_timeout = DEFAULT_API_TIMEOUT
 
-    required_keys = {'Host', 'Port', 'Cluster'}
-    optional_keys = {'Interval', 'Dimension', 'EnhancedMetrics', 'IncludeMetric', 'ExcludeMetric'}
+    required_keys = {'Host', 'Port'}
+    optional_keys = {
+                    'Interval',
+                    'Dimension',
+                    'EnhancedMetrics',
+                    'IncludeMetric',
+                    'ExcludeMetric',
+                    'Cluster'
+    }
     ssl_keys = {}
     testing = False
     for val in conf.children:
         if val.key in required_keys:
             plugin_conf[val.key] = val.values[0]
-        elif val.key in optional_keys and val.key == 'Interval' and val.values[0]:
+        elif val.key in optional_keys and \
+                val.key == 'Interval' and val.values[0]:
             interval = val.values[0]
+        elif val.key in optional_keys and \
+                val.key == 'Cluster' and val.values[0]:
+            cluster = val.values[0]
         elif val.key in optional_keys and val.key == 'Dimension':
             if len(val.values) == 2:
                 custom_dimensions.update({val.values[0]: val.values[1]})
             else:
                 collectd.warning("WARNING: Check configuration setting for %s" % val.key)
-        elif val.key in optional_keys and val.key == 'EnhancedMetrics' and val.values[0]:
+        elif val.key in optional_keys and \
+                val.key == 'EnhancedMetrics' and val.values[0]:
             enhanced_metrics = str_to_bool(val.values[0])
-        elif val.key in optional_keys and val.key == 'IncludeMetric' and val.values[0]:
+        elif val.key in optional_keys and \
+                val.key == 'IncludeMetric' and val.values[0]:
             include_optional_metrics.add(val.values[0])
-        elif val.key in optional_keys and val.key == 'ExcludeMetric' and val.values[0]:
+        elif val.key in optional_keys and \
+                val.key == 'ExcludeMetric' and val.values[0]:
             exclude_optional_metrics.add(val.values[0])
         elif val.key == 'ssl_keyfile' and val.values[0]:
             ssl_keys['ssl_keyfile'] = val.values[0]
@@ -101,7 +146,7 @@ def read_config(conf):
             ssl_keys['ssl_cert_validation'] = val.values[0]
         elif val.key == 'ssl_ca_certs' and val.values[0]:
             ssl_keys['ssl_ca_certs'] = val.values[0]
-        elif val.key == 'Testing' and str_to_bool(val.values[0]):   # if tesing is set to true
+        elif val.key == 'Testing' and str_to_bool(val.values[0]):
             testing = True
 
     collectd.info("INFO: Configuration settings:")
@@ -118,6 +163,7 @@ def read_config(conf):
             'state': None,
             'member_id': ("%s:%s" % (plugin_conf['Host'], plugin_conf['Port'])),
             'plugin_conf': plugin_conf,
+            'cluster': cluster,
             'interval': interval,
             'ssl_keys': ssl_keys,
             'base_url': base_url,
@@ -148,21 +194,23 @@ def str_to_bool(flag):
 
 def read_metrics(data):
     '''
-    Registered read call back function that collects metrics from all endpoints
+    Registered read call back function that collects
+    metrics from all endpoints
     '''
     map_id_to_url(data, 'members')
     get_self_metrics(data, 'self')
     get_store_metrics(data, 'store')
-    if data['state'] == LEADER:    # get metrics from leader
+    if data['state'] == LEADER:
         get_leader_metrics(data, 'leader')
-    if data['enhanced_metrics'] or len(data['include_optional_metrics']) > 0:   # get optional metrics
+    # get optional metrics
+    if data['enhanced_metrics'] or len(data['include_optional_metrics']) > 0:
         get_optional_metrics(data, 'metrics')
 
 
 def map_id_to_url(data, endpoint):
     '''
-    etcd uses interval id for each member. This method maps the id to corresponding
-    base url
+    etcd uses interval id for each member. This method
+    maps the id to corresponding base url
     '''
     collectd.debug("DEBUGGING: %s" % data)
     url = ("%s/v2/%s" % (data['base_url'], endpoint))
@@ -181,8 +229,8 @@ def get_self_metrics(data, endpoint):
     response = get_json(data, endpoint)
 
     if response:
-        data['state'] = LEADER if LEADER ==     response['state'] else FOLLOWER
-        default_dimensions = {'state': data['state'], 'cluster': data['plugin_conf']['Cluster']}
+        data['state'] = LEADER if LEADER == response['state'] else FOLLOWER
+        default_dimensions = {'state': data['state'], 'cluster': data['cluster']}
         plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
         for key in SELF_METRICS:
@@ -199,7 +247,7 @@ def get_store_metrics(data, endpoint):
     response = get_json(data, endpoint)
 
     if response:
-        default_dimensions = {'state': data['state'], 'cluster': data['plugin_conf']['Cluster']}
+        default_dimensions = {'state': data['state'], 'cluster': data['cluster']}
         plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
         for key in STORE_METRICS:
@@ -207,7 +255,7 @@ def get_store_metrics(data, endpoint):
                 prepare_and_dispatch_metric(STORE_METRICS[key].name, response[key],
                 STORE_METRICS[key].type, plugin_instance)
 
-        # Modification operations on the store are global to all the members. Only leader reports those.
+        # Only leader reports operations on the store are global to all the members
         if data['state'] == LEADER:
             for key in STORE_METRICS_LEADER:
                 if key in response:
@@ -223,10 +271,10 @@ def get_leader_metrics(data, endpoint):
     response = get_json(data, endpoint)
 
     if response:
-        for follower, value in response.get('followers', {}).iteritems():
+        for follower, value in six.iteritems(response.get('followers', {})):
             default_dimensions = {'state': data['state'],
                                 'follower': data[follower][7:],
-                                'cluster': data['plugin_conf']['Cluster']}
+                                'cluster': data['cluster']}
             plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
             for key in LEADER_METRICS_COUNTS:
@@ -251,7 +299,7 @@ def get_optional_metrics(data, endpoint):
     if response:
         metrics = {}
         transform_text_to_metrics(response, metrics)
-        default_dimensions = {'state': data['state'], 'cluster': data['plugin_conf']['Cluster']}
+        default_dimensions = {'state': data['state'], 'cluster': data['cluster']}
 
         if data['enhanced_metrics']:    # if the bool is true, then exclude metrics that are not required
             for metric in metrics:
@@ -296,7 +344,8 @@ def prepare_plugin_instance(data, default_dimensions, more_dimensions=''):
     '''
     Prepares the plugin instance string to be passed to collectd
     '''
-    default_dimensions.update(data['custom_dimensions'])  # add custom dimensions to the list of dimensions
+    # add custom dimensions to the list of dimensions
+    default_dimensions.update(data['custom_dimensions'])
     default_dimensions = format_dimensions(default_dimensions, (more_dimensions))
     return ("%s%s" % (data['member_id'], default_dimensions))
 
@@ -348,7 +397,7 @@ def get_ssl_params(data):
     Helper method to prepare auth tuple
     '''
     certificate = None
-    verify = None
+    verify = True
     ssl_keys = data['ssl_keys']
     if 'ssl_certificate' in ssl_keys and 'ssl_keyfile' in ssl_keys:
         certificate = (ssl_keys['ssl_certificate'], ssl_keys['ssl_keyfile'])
@@ -383,7 +432,8 @@ def prepare_and_print_metric(name, value, type, dimensions, plugin_instance):
     '''
     Prints out metrics in string format
     '''
-    out = ("{ name : %s, value : %s, type : %s, dimension : %s, plugin_instance: %s}" % (name, value, type, dimensions, plugin_instance))
+    out = ("{ name : %s, value : %s, type : %s, dimension : %s, plugin_instance: %s}" %
+            (name, value, type, dimensions, plugin_instance))
     return out
 
 
@@ -392,9 +442,10 @@ def format_dimensions(dimensions, more=''):
     Formats dimensions before fed to collectd plugin instance
     '''
     formatted = []
-    formatted.extend(("%s=%s" % (k, v)) for k, v in dimensions.iteritems())
-    return ('[%s%s]' % (str(formatted).replace('\'', '').replace(' ', '').replace("\"", '').
-            replace('[', '').replace(']', ''), '' if len(more) == 1 else more))
+    formatted.extend(("%s=%s" % (k, v)) for k, v in six.iteritems(dimensions))
+    return ('[%s%s]' % (str(formatted).replace('\'', '').
+            replace(' ', '').replace("\"", '').replace('[', '').
+                replace(']', ''), '' if len(more) == 1 else more))
 
 
 if __name__ == "__main__":

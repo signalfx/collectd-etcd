@@ -14,11 +14,11 @@ The following are required configuration keys:
 
 * Host - Required. Hostname or IP address of the etcd member, default is 'localhost'
 * Port - Required. The port of the etcd member, default is '2379'
-* Cluster - Required. The cluster to which the member
 
 Optional configurations keys include:
 
 * Interval - Interval between metric calls. Default is 10s
+* Cluster - The cluster to which the member belongs. By default, this is set to "default"
 * EnhancedMetrics - Flag to specify whether stats from the ```/metrics``` endpoint are needed. Default is False
 * IncludeMetric - Metrics from the ```/metrics``` endpoint can be included individually
 * ExcludeMetric - Metrics from the ```/metrics``` endpoint can be excluded individually

@@ -36,7 +36,6 @@ ConfigOption = collections.namedtuple('ConfigOption', ('key', 'values'))
 fail_mock_config_required_params = mock.Mock()
 fail_mock_config_required_params.children = [
     ConfigOption('Host', ('localhost',)),
-    ConfigOption('Port', ('32739',)),
     ConfigOption('Testing', ('True',))
 ]
 
@@ -95,7 +94,7 @@ def test_default_config():
     assert module_config['plugin_conf']['Port'] == '2379'
     assert module_config['interval'] == '10'
     assert module_config['base_url'] == 'http://localhost:2379'
-    assert module_config['plugin_conf']['Cluster'] == 'MocketcdCluster'
+    assert module_config['cluster'] == 'MocketcdCluster'
 
 
 @mock.patch('etcd_plugin.get_json_helper', mock_api_call)
