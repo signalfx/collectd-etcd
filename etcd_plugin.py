@@ -4,7 +4,7 @@ import collections
 import collectd
 import six
 
-
+print "START PLUGIN CODE"
 LEADER = "StateLeader"
 FOLLOWER = "StateFollower"
 DEFAULT_INTERVAL = 10
@@ -90,11 +90,12 @@ LEADER_METRICS_LATENCY = {
         Metric('etcd.leader.latency.stddev', 'gauge')
 }
 
-
+print "SET ALL METRICS"
 def read_config(conf):
     '''
     Reads the configurations provided by the user
     '''
+    print "READ CONFIG"
     plugin_conf = {}
     cluster = 'default'
     interval = DEFAULT_INTERVAL
@@ -104,15 +105,15 @@ def read_config(conf):
     include_optional_metrics = set()
     http_timeout = DEFAULT_API_TIMEOUT
 
-    required_keys = {'Host', 'Port'}
-    optional_keys = {
-                    'Interval',
-                    'Dimension',
-                    'EnhancedMetrics',
-                    'IncludeMetric',
-                    'ExcludeMetric',
-                    'Cluster'
-    }
+    required_keys = frozenset(('Host', 'Port'))
+    optional_keys = frozenset((
+                        'Interval',
+                        'Dimension',
+                        'EnhancedMetrics',
+                        'IncludeMetric',
+                        'ExcludeMetric',
+                        'Cluster'
+    ))
     ssl_keys = {}
     testing = False
     for val in conf.children:
@@ -197,6 +198,7 @@ def read_metrics(data):
     Registered read call back function that collects
     metrics from all endpoints
     '''
+    collectd.info("INFO: STARTED FETCHING METRICS")
     map_id_to_url(data, 'members')
     get_self_metrics(data, 'self')
     get_store_metrics(data, 'store')

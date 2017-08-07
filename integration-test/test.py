@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import httplib
 import json
 from time import time, sleep
@@ -16,18 +15,18 @@ ETCD_HOSTS = [
     'etcd238',
     'etcd310',
     'etcd324',
-    'etcd208'
+    'etcd208',
 ]
 TIMEOUT_SECS = 60
 
 
 def get_metric_data():
     # Use httplib instead of requests so we don't have to install stuff with pip
-    # call(["curl", "-L", "http://etcd310:2379/v2/stats/self"])
     conn = httplib.HTTPConnection("fake_sfx", 8080)
     conn.request("GET", "/")
     resp = conn.getresponse()
-    return json.loads(resp.read())
+    a = resp.read()
+    return json.loads(a)
 
 
 def wait_for_metrics_from_each_member():
