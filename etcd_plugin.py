@@ -62,10 +62,10 @@ STORE_METRICS = {
         Metric('etcd.store.gets.fail', 'counter'),
     'getsSuccess':
         Metric('etcd.store.gets.success', 'counter'),
-    'expireCount':
-        Metric('etcd.store.expire.count', 'counter'),
     'watchers':
-        Metric('etcd.store.watchers', 'gauge')
+        Metric('etcd.store.watchers', 'gauge'),
+    'expireCount':
+        Metric('etcd.store.expire.count', 'counter')
 }
 
 
@@ -237,6 +237,9 @@ def get_self_metrics(data, endpoint):
         for key in SELF_METRICS:
             if key in response:
                 prepare_and_dispatch_metric(SELF_METRICS[key].name, response[key],
+                SELF_METRICS[key].type, plugin_instance)
+            else:
+                prepare_and_dispatch_metric(SELF_METRICS[key].name, 0,
                 SELF_METRICS[key].type, plugin_instance)
 
 
