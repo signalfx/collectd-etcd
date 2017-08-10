@@ -159,6 +159,9 @@ def read_config(conf):
             raise KeyError("Missing required config setting: %s" % key)
 
     base_url = ("http://%s:%s" % (plugin_conf['Host'], plugin_conf['Port']))
+    if 'ssl_certificate' in ssl_keys and 'ssl_keyfile' in ssl_keys:
+        base_url = ('https'+base_url[4:])
+
     module_config = {
             'state': None,
             'member_id': ("%s:%s" % (plugin_conf['Host'], plugin_conf['Port'])),
