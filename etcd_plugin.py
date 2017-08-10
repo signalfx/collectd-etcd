@@ -187,8 +187,11 @@ def str_to_bool(flag):
     '''
     Converts true/false to boolean
     '''
-    if flag.lower() == 'true':
+    if str(flag).strip().lower() == 'true':
         return True
+    elif str(flag).strip().lower() != 'false':
+        collectd.warning("WARNING: REQUIRES BOOLEAN. RECEIVED %s. ASSUMING FALSE." % (str(flag)))
+
     return False
 
 
@@ -215,7 +218,7 @@ def map_id_to_url(data, endpoint):
     '''
     # collectd.debug("DEBUGGING: %s" % data)
     url = ("%s/v2/%s" % (data['base_url'], endpoint))
-    response = get_json_helper(data, url)
+    response = get_json(data, url)
 
     if response:
         for member in response[endpoint]:
@@ -227,7 +230,7 @@ def get_self_metrics(data, endpoint):
     Fetches metrics from the /self endpoint
     '''
     collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
-    response = get_json(data, endpoint)
+    response = prepare_url(data, endpoint)
 
     if response:
         data['state'] = LEADER if LEADER == response['state'] else FOLLOWER
@@ -248,7 +251,7 @@ def get_store_metrics(data, endpoint):
     Fetches metrics from the /store endpoint
     '''
     collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
-    response = get_json(data, endpoint)
+    response = prepare_url(data, endpoint)
 
     if response:
         default_dimensions = {'state': data['state'], 'cluster': data['cluster']}
@@ -272,7 +275,7 @@ def get_leader_metrics(data, endpoint):
     Fetches metrics from the /leader endpoint
     '''
     collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
-    response = get_json(data, endpoint)
+    response = prepare_url(data, endpoint)
 
     if response:
         for follower, value in six.iteritems(response.get('followers', {})):
@@ -354,15 +357,15 @@ def prepare_plugin_instance(data, default_dimensions, more_dimensions=''):
     return ("%s%s" % (data['member_id'], default_dimensions))
 
 
-def get_json(data, endpoint):
+def prepare_url(data, endpoint):
     '''
     Returns json
     '''
     url = ("%s/v2/stats/%s" % (data['base_url'], endpoint))
-    return get_json_helper(data, url)
+    return get_json(data, url)
 
 
-def get_json_helper(data, url):
+def get_json(data, url):
     '''
     Makes the API call and prepares the json to be returned
     '''
@@ -405,6 +408,8 @@ def get_ssl_params(data):
     ssl_keys = data['ssl_keys']
     if 'ssl_certificate' in ssl_keys and 'ssl_keyfile' in ssl_keys:
         certificate = (ssl_keys['ssl_certificate'], ssl_keys['ssl_keyfile'])
+        if data['base_url'][:5] != 'https':
+            data['base_url'] = ('https'+data['base_url'][4:])
 
     if 'ssl_cert_validation' in ssl_keys:
         verify = ssl_keys.get('ssl_ca_certs', True) if ssl_keys['ssl_cert_validation'] else False

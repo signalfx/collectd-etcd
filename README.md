@@ -1,6 +1,6 @@
-# Collectd etcd Plugin
+# collectd etcd Plugin
 
-An etcd [Collectd](http://www.collectd.org/) plugin which users can use to send metrics from etcd instances to SignalFx
+An etcd [collectd](http://www.collectd.org/) plugin which users can use to send metrics from etcd instances to SignalFx
 
 ## Installation
 
@@ -11,7 +11,7 @@ An etcd [Collectd](http://www.collectd.org/) plugin which users can use to send 
 
 ## Requirements
 
-* Collectd 4.9 or later (for the Python plugin)
+* collectd 4.9 or later (for the Python plugin)
 * Python 2.6 or later
 * etcd 2.0.8 or later
 

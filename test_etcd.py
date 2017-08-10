@@ -93,10 +93,10 @@ def test_default_config():
     assert module_config['plugin_conf']['Host'] == 'localhost'
     assert module_config['plugin_conf']['Port'] == '2379'
     assert module_config['interval'] == '10'
-    assert module_config['base_url'] == 'http://localhost:2379'
+    assert module_config['base_url'] == 'https://localhost:2379'
     assert module_config['cluster'] == 'MocketcdCluster'
 
 
-@mock.patch('etcd_plugin.get_json_helper', mock_api_call)
+@mock.patch('etcd_plugin.get_json', mock_api_call)
 def test_read():
     etcd_plugin.read_metrics(etcd_plugin.read_config(mock_config))
