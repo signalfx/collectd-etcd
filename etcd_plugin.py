@@ -105,39 +105,26 @@ def read_config(conf):
     http_timeout = DEFAULT_API_TIMEOUT
 
     required_keys = frozenset(('Host', 'Port'))
-    optional_keys = frozenset((
-                        'Interval',
-                        'Dimension',
-                        'EnhancedMetrics',
-                        'IncludeMetric',
-                        'ExcludeMetric',
-                        'Cluster'
-    ))
     ssl_keys = {}
     testing = False
 
     for val in conf.children:
         if val.key in required_keys:
             plugin_conf[val.key] = val.values[0]
-        elif val.key in optional_keys and \
-                val.key == 'Interval' and val.values[0]:
+        elif val.key == 'Interval' and val.values[0]:
             interval = val.values[0]
-        elif val.key in optional_keys and \
-                val.key == 'Cluster' and val.values[0]:
+        elif val.key == 'Cluster' and val.values[0]:
             cluster = val.values[0]
-        elif val.key in optional_keys and val.key == 'Dimension':
+        elif val.key == 'Dimension':
             if len(val.values) == 2:
                 custom_dimensions.update({val.values[0]: val.values[1]})
             else:
                 collectd.warning("WARNING: Check configuration setting for %s" % val.key)
-        elif val.key in optional_keys and \
-                val.key == 'EnhancedMetrics' and val.values[0]:
+        elif val.key == 'EnhancedMetrics' and val.values[0]:
             enhanced_metrics = str_to_bool(val.values[0])
-        elif val.key in optional_keys and \
-                val.key == 'IncludeMetric' and val.values[0]:
+        elif val.key == 'IncludeMetric' and val.values[0]:
             include_optional_metrics.add(val.values[0])
-        elif val.key in optional_keys and \
-                val.key == 'ExcludeMetric' and val.values[0]:
+        elif val.key == 'ExcludeMetric' and val.values[0]:
             exclude_optional_metrics.add(val.values[0])
         elif val.key == 'ssl_keyfile' and val.values[0]:
             ssl_keys['ssl_keyfile'] = val.values[0]
@@ -150,7 +137,7 @@ def read_config(conf):
         elif val.key == 'Testing' and str_to_bool(val.values[0]):
             testing = True
 
-    collectd.debug("INFO: Configuration settings:")
+    collectd.debug("Configuration settings:")
 
     for key in required_keys:
         try:
@@ -179,7 +166,7 @@ def read_config(conf):
             'Testing': testing
             }
 
-    collectd.debug("INFO: module_config: (%s)" % str(module_config))
+    collectd.debug("module_config: (%s)" % str(module_config))
 
     if testing:
         return module_config
@@ -204,7 +191,7 @@ def read_metrics(data):
     Registered read call back function that collects
     metrics from all endpoints
     '''
-    collectd.debug("INFO: STARTED FETCHING METRICS")
+    collectd.debug("STARTED FETCHING METRICS")
     map_id_to_url(data, 'members')
     get_self_metrics(data, 'self')
     get_store_metrics(data, 'store')
@@ -233,7 +220,7 @@ def get_self_metrics(data, endpoint):
     '''
     Fetches metrics from the /self endpoint
     '''
-    collectd.debug("INFO: METRICS FROM %s ENDPOINT" % endpoint)
+    collectd.debug("METRICS FROM %s ENDPOINT" % endpoint)
     response = prepare_url(data, endpoint)
 
     if response:
@@ -254,7 +241,7 @@ def get_store_metrics(data, endpoint):
     '''
     Fetches metrics from the /store endpoint
     '''
-    collectd.debug("INFO: METRICS FROM %s ENDPOINT" % endpoint)
+    collectd.debug("METRICS FROM %s ENDPOINT" % endpoint)
     response = prepare_url(data, endpoint)
 
     if response:
@@ -278,7 +265,7 @@ def get_leader_metrics(data, endpoint):
     '''
     Fetches metrics from the /leader endpoint
     '''
-    collectd.debug("INFO: METRICS FROM %s ENDPOINT" % endpoint)
+    collectd.debug("METRICS FROM %s ENDPOINT" % endpoint)
     response = prepare_url(data, endpoint)
 
     if response:
@@ -303,7 +290,7 @@ def get_optional_metrics(data, endpoint):
     '''
     Fetches optional metrics from /metrics endpoint
     '''
-    collectd.debug("INFO: METRICS FROM %s ENDPOINT" % endpoint)
+    collectd.debug("METRICS FROM %s ENDPOINT" % endpoint)
     url = ("%s/%s" % (data['base_url'], endpoint))
     response = get_text(data, url)
 
