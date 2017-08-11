@@ -9,7 +9,6 @@ LEADER = "StateLeader"
 FOLLOWER = "StateFollower"
 DEFAULT_INTERVAL = 10
 DEFAULT_API_TIMEOUT = 60
-verbose = False
 
 Metric = collections.namedtuple('Metric', ('name', 'type'))
 
@@ -116,7 +115,6 @@ def read_config(conf):
     ))
     ssl_keys = {}
     testing = False
-    global verbose
 
     for val in conf.children:
         if val.key in required_keys:
@@ -151,15 +149,13 @@ def read_config(conf):
             ssl_keys['ssl_ca_certs'] = val.values[0]
         elif val.key == 'Testing' and str_to_bool(val.values[0]):
             testing = True
-        elif val.key == 'Verbose' and str_to_bool(val.values[0]):
-            verbose = True
 
-    logs_wrapper("INFO: Configuration settings:", verbose)
+    collectd.debug("INFO: Configuration settings:")
 
     for key in required_keys:
         try:
             val = plugin_conf[key]
-            logs_wrapper("%s : %s" % (key, val), verbose)
+            collectd.debug("%s : %s" % (key, val))
         except KeyError:
             raise KeyError("Missing required config setting: %s" % key)
 
@@ -183,7 +179,7 @@ def read_config(conf):
             'Testing': testing
             }
 
-    logs_wrapper("INFO: module_config: (%s)" % str(module_config), verbose)
+    collectd.debug("INFO: module_config: (%s)" % str(module_config))
 
     if testing:
         return module_config
@@ -208,7 +204,7 @@ def read_metrics(data):
     Registered read call back function that collects
     metrics from all endpoints
     '''
-    logs_wrapper("INFO: STARTED FETCHING METRICS", verbose)
+    collectd.debug("INFO: STARTED FETCHING METRICS")
     map_id_to_url(data, 'members')
     get_self_metrics(data, 'self')
     get_store_metrics(data, 'store')
@@ -237,7 +233,7 @@ def get_self_metrics(data, endpoint):
     '''
     Fetches metrics from the /self endpoint
     '''
-    logs_wrapper("INFO: METRICS FROM %s ENDPOINT" % endpoint, verbose)
+    collectd.debug("INFO: METRICS FROM %s ENDPOINT" % endpoint)
     response = prepare_url(data, endpoint)
 
     if response:
@@ -258,7 +254,7 @@ def get_store_metrics(data, endpoint):
     '''
     Fetches metrics from the /store endpoint
     '''
-    logs_wrapper("INFO: METRICS FROM %s ENDPOINT" % endpoint, verbose)
+    collectd.debug("INFO: METRICS FROM %s ENDPOINT" % endpoint)
     response = prepare_url(data, endpoint)
 
     if response:
@@ -282,7 +278,7 @@ def get_leader_metrics(data, endpoint):
     '''
     Fetches metrics from the /leader endpoint
     '''
-    logs_wrapper("INFO: METRICS FROM %s ENDPOINT" % endpoint, verbose)
+    collectd.debug("INFO: METRICS FROM %s ENDPOINT" % endpoint)
     response = prepare_url(data, endpoint)
 
     if response:
@@ -307,7 +303,7 @@ def get_optional_metrics(data, endpoint):
     '''
     Fetches optional metrics from /metrics endpoint
     '''
-    logs_wrapper("INFO: METRICS FROM %s ENDPOINT" % endpoint, verbose)
+    collectd.debug("INFO: METRICS FROM %s ENDPOINT" % endpoint)
     url = ("%s/%s" % (data['base_url'], endpoint))
     response = get_text(data, url)
 
@@ -396,7 +392,7 @@ def get_text(data, url):
 
 
 def make_api_call(data, url):
-    logs_wrapper("GETTING THIS  URL %s" % url, verbose)
+    collectd.debug("GETTING THIS  URL %s" % url)
     try:
         (certificate, verify) = get_ssl_params(data)
         response = requests.get(url, verify=verify, cert=certificate, timeout=data['http_timeout'])
@@ -440,7 +436,7 @@ def prepare_and_dispatch_metric(name, value, _type, dimensions):
     data_point.meta = {'true': 'true'}
 
     data_point.dispatch()
-    logs_wrapper("DISPATCHED: %s" % prepare_and_print_metric(name, value, _type, dimensions, dimensions), verbose)
+    collectd.debug("DISPATCHED: %s" % prepare_and_print_metric(name, value, _type, dimensions, dimensions))
 
 
 def prepare_and_print_metric(name, value, _type, dimensions, plugin_instance):
@@ -461,11 +457,6 @@ def format_dimensions(dimensions, more=''):
     return ('[%s%s]' % (str(formatted).replace('\'', '').
             replace(' ', '').replace("\"", '').replace('[', '').
                 replace(']', ''), '' if len(more) == 1 else more))
-
-
-def logs_wrapper(message, flag):
-    if flag:
-        collectd.info(message)
 
 
 if __name__ == "__main__":
