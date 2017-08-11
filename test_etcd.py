@@ -122,6 +122,33 @@ def test_with_ssl_config():
     assert module_config['cluster'] == 'MocketcdCluster'
 
 
+mock_config_check_bool = mock.Mock()
+mock_config_check_bool.children = [
+    ConfigOption('Host', ('localhost',)),
+    ConfigOption('Port', ('2379',)),
+    ConfigOption('Interval', ('10',)),
+    ConfigOption('Cluster', ('MocketcdCluster',)),
+    ConfigOption('ssl_keyfile', ('ssl_keyfile',)),
+    ConfigOption('ssl_certificate', ('ssl_certificate',)),
+    ConfigOption('ssl_ca_certs', ('ssl_ca_certs',)),
+    ConfigOption('EnhancedMetrics', ('xyz',)),
+    ConfigOption('Testing', ('True',))
+]
+
+
+def test_boolean_config():
+    module_config = etcd_plugin.read_config(mock_config_check_bool)
+    assert module_config['plugin_conf']['Host'] == 'localhost'
+    assert module_config['plugin_conf']['Port'] == '2379'
+    assert module_config['interval'] == '10'
+    assert module_config['ssl_keys']['ssl_keyfile'] == 'ssl_keyfile'
+    assert module_config['ssl_keys']['ssl_certificate'] == 'ssl_certificate'
+    assert module_config['ssl_keys']['ssl_ca_certs'] == 'ssl_ca_certs'
+    assert module_config['base_url'] == 'https://localhost:2379'
+    assert module_config['cluster'] == 'MocketcdCluster'
+    assert module_config['enhanced_metrics'] == False
+
+
 @mock.patch('etcd_plugin.get_json', mock_api_call)
 def test_read():
     etcd_plugin.read_metrics(etcd_plugin.read_config(mock_config))
