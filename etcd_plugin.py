@@ -9,6 +9,7 @@ LEADER = "StateLeader"
 FOLLOWER = "StateFollower"
 DEFAULT_INTERVAL = 10
 DEFAULT_API_TIMEOUT = 60
+verbose = False
 
 Metric = collections.namedtuple('Metric', ('name', 'type'))
 
@@ -115,6 +116,8 @@ def read_config(conf):
     ))
     ssl_keys = {}
     testing = False
+    global verbose
+
     for val in conf.children:
         if val.key in required_keys:
             plugin_conf[val.key] = val.values[0]
@@ -148,13 +151,15 @@ def read_config(conf):
             ssl_keys['ssl_ca_certs'] = val.values[0]
         elif val.key == 'Testing' and str_to_bool(val.values[0]):
             testing = True
+        elif val.key == 'Verbose' and str_to_bool(val.values[0]):
+            verbose = True
 
-    collectd.info("INFO: Configuration settings:")
+    logs_wrapper("INFO: Configuration settings:", verbose)
 
     for key in required_keys:
         try:
             val = plugin_conf[key]
-            collectd.info("%s : %s" % (key, val))
+            logs_wrapper("%s : %s" % (key, val), verbose)
         except KeyError:
             raise KeyError("Missing required config setting: %s" % key)
 
@@ -178,7 +183,7 @@ def read_config(conf):
             'Testing': testing
             }
 
-    collectd.info("INFO: module_config: (%s)" % str(module_config))
+    logs_wrapper("INFO: module_config: (%s)" % str(module_config), verbose)
 
     if testing:
         return module_config
@@ -203,7 +208,7 @@ def read_metrics(data):
     Registered read call back function that collects
     metrics from all endpoints
     '''
-    collectd.info("INFO: STARTED FETCHING METRICS")
+    logs_wrapper("INFO: STARTED FETCHING METRICS", verbose)
     map_id_to_url(data, 'members')
     get_self_metrics(data, 'self')
     get_store_metrics(data, 'store')
@@ -232,7 +237,7 @@ def get_self_metrics(data, endpoint):
     '''
     Fetches metrics from the /self endpoint
     '''
-    collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
+    logs_wrapper("INFO: METRICS FROM %s ENDPOINT" % endpoint, verbose)
     response = prepare_url(data, endpoint)
 
     if response:
@@ -253,7 +258,7 @@ def get_store_metrics(data, endpoint):
     '''
     Fetches metrics from the /store endpoint
     '''
-    collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
+    logs_wrapper("INFO: METRICS FROM %s ENDPOINT" % endpoint, verbose)
     response = prepare_url(data, endpoint)
 
     if response:
@@ -277,7 +282,7 @@ def get_leader_metrics(data, endpoint):
     '''
     Fetches metrics from the /leader endpoint
     '''
-    collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
+    logs_wrapper("INFO: METRICS FROM %s ENDPOINT" % endpoint, verbose)
     response = prepare_url(data, endpoint)
 
     if response:
@@ -302,7 +307,7 @@ def get_optional_metrics(data, endpoint):
     '''
     Fetches optional metrics from /metrics endpoint
     '''
-    collectd.info("INFO: METRICS FROM %s ENDPOINT" % endpoint)
+    logs_wrapper("INFO: METRICS FROM %s ENDPOINT" % endpoint, verbose)
     url = ("%s/%s" % (data['base_url'], endpoint))
     response = get_text(data, url)
 
@@ -391,7 +396,7 @@ def get_text(data, url):
 
 
 def make_api_call(data, url):
-    collectd.info("GETTING THIS  URL %s" % url)
+    logs_wrapper("GETTING THIS  URL %s" % url, verbose)
     try:
         (certificate, verify) = get_ssl_params(data)
         response = requests.get(url, verify=verify, cert=certificate, timeout=data['http_timeout'])
@@ -411,8 +416,6 @@ def get_ssl_params(data):
     ssl_keys = data['ssl_keys']
     if 'ssl_certificate' in ssl_keys and 'ssl_keyfile' in ssl_keys:
         certificate = (ssl_keys['ssl_certificate'], ssl_keys['ssl_keyfile'])
-        if data['base_url'][:5] != 'https':
-            data['base_url'] = ('https'+data['base_url'][4:])
 
     if 'ssl_cert_validation' in ssl_keys:
         verify = ssl_keys.get('ssl_ca_certs', True) if ssl_keys['ssl_cert_validation'] else False
@@ -420,13 +423,13 @@ def get_ssl_params(data):
     return (certificate, verify)
 
 
-def prepare_and_dispatch_metric(name, value, type, dimensions):
+def prepare_and_dispatch_metric(name, value, _type, dimensions):
     '''
     Prepares and dispatches a metric
     '''
     data_point = collectd.Values(plugin="test-etcd")
     data_point.type_instance = name
-    data_point.type = type
+    data_point.type = _type
     data_point.values = [value]
     data_point.plugin_instance = dimensions
 
@@ -437,15 +440,15 @@ def prepare_and_dispatch_metric(name, value, type, dimensions):
     data_point.meta = {'true': 'true'}
 
     data_point.dispatch()
-    collectd.info("DISPATCHED: %s" % prepare_and_print_metric(name, value, type, dimensions, dimensions))
+    logs_wrapper("DISPATCHED: %s" % prepare_and_print_metric(name, value, _type, dimensions, dimensions), verbose)
 
 
-def prepare_and_print_metric(name, value, type, dimensions, plugin_instance):
+def prepare_and_print_metric(name, value, _type, dimensions, plugin_instance):
     '''
     Prints out metrics in string format
     '''
     out = ("{ name : %s, value : %s, type : %s, dimension : %s, plugin_instance: %s}" %
-            (name, value, type, dimensions, plugin_instance))
+            (name, value, _type, dimensions, plugin_instance))
     return out
 
 
@@ -458,6 +461,11 @@ def format_dimensions(dimensions, more=''):
     return ('[%s%s]' % (str(formatted).replace('\'', '').
             replace(' ', '').replace("\"", '').replace('[', '').
                 replace(']', ''), '' if len(more) == 1 else more))
+
+
+def logs_wrapper(message, flag):
+    if flag:
+        collectd.info(message)
 
 
 if __name__ == "__main__":
