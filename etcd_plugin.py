@@ -178,9 +178,10 @@ def str_to_bool(flag):
     '''
     Converts true/false to boolean
     '''
-    if str(flag).strip().lower() == 'true':
+    flag = str(flag).strip().lower()
+    if flag == 'true':
         return True
-    elif str(flag).strip().lower() != 'false':
+    elif flag != 'false':
         collectd.warning("WARNING: REQUIRES BOOLEAN. RECEIVED %s. ASSUMING FALSE." % (str(flag)))
 
     return False
