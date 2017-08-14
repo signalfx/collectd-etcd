@@ -9,6 +9,7 @@ LEADER = "StateLeader"
 FOLLOWER = "StateFollower"
 DEFAULT_INTERVAL = 10
 DEFAULT_API_TIMEOUT = 60
+PLUGIN_NAME = "etcd"
 
 Metric = collections.namedtuple('Metric', ('name', 'type'))
 
@@ -411,7 +412,7 @@ def prepare_and_dispatch_metric(name, value, _type, dimensions):
     '''
     Prepares and dispatches a metric
     '''
-    data_point = collectd.Values(plugin="test-etcd")
+    data_point = collectd.Values(plugin=PLUGIN_NAME)
     data_point.type_instance = name
     data_point.type = _type
     data_point.values = [value]
