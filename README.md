@@ -5,7 +5,7 @@ An etcd [collectd](http://www.collectd.org/) plugin which users can use to send 
 ## Installation
 
 * Checkout this repository somewhere on your system accessible by collectd. The suggested location is `/usr/share/collectd/`
-* Install the Python requirements with sudo pip install -r requirements.txt
+* Install the Python requirements with sudo ```pip install -r requirements.txt```
 * Configure the plugin (see below)
 * Restart collectd
 

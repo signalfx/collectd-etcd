@@ -3,17 +3,9 @@ __all__ = ['match_hostname', 'CertificateError']
 import socket
 import ssl
 import re
-try:
-    from http import client # py3k
-except ImportError:
-    import httplib as client # py < 3.x
+from six.moves import http_client
+from six.moves import urllib
 
-try:
-    import urllib2 as request # py < 3.x
-except ImportError:
-    from urllib import request # py3k
-
-# copy-paste from stdlib's ssl.py (py3.2)
 class CertificateError(ValueError):
     pass
 
@@ -58,11 +50,11 @@ def _dnsname_to_pat(dn):
     return re.compile(r'\A' + r'\.'.join(pats) + r'\Z', re.IGNORECASE)
 
 
-class HTTPSConnection(client.HTTPSConnection):
+class HTTPSConnection(http_client.HTTPSConnection):
     def __init__(self, host, **kwargs):
         self.ca_certs = kwargs.pop('ca_certs', None)
         self.checker = kwargs.pop('checker', match_hostname)
-        client.HTTPSConnection.__init__(self, host, **kwargs)
+        http_client.HTTPSConnection.__init__(self, host, **kwargs)
 
 
     def connect(self):
@@ -92,10 +84,10 @@ class HTTPSConnection(client.HTTPSConnection):
                 raise
 
 
-class HTTPSHandler(request.HTTPSHandler):
+class HTTPSHandler(urllib.request.HTTPSHandler):
     def __init__(self, key_file=None, cert_file=None, ca_certs=None,
                  checker=match_hostname):
-        request.HTTPSHandler.__init__(self)
+        urllib.request.HTTPSHandler.__init__(self)
         self.key_file = key_file
         self.cert_file = cert_file
         self.ca_certs = ca_certs
