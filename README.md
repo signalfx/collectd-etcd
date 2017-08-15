@@ -34,7 +34,7 @@ Specify path to keyfile and certificate if certificate based authentication of c
 * ssl_keyfile - path to file
 * ssl_certificate - path to file
 
-Provide a custom file that lists trusted CA certificates
+Provide a custom file that lists trusted CA certificates, required when keyfile and certificate are provided
 * ssl_ca_certs - path to file
 
 Note that multiple etcd members can be configured in the same file.
