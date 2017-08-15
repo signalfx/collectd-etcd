@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import requests
+import urllib2, urllib_ssl_handler
+import json
 import collections
 import collectd
 import six
@@ -131,8 +132,6 @@ def read_config(conf):
             ssl_keys['ssl_keyfile'] = val.values[0]
         elif val.key == 'ssl_certificate' and val.values[0]:
             ssl_keys['ssl_certificate'] = val.values[0]
-        elif val.key == 'ssl_cert_validation' and val.values[0]:
-            ssl_keys['ssl_cert_validation'] = val.values[0]
         elif val.key == 'ssl_ca_certs' and val.values[0]:
             ssl_keys['ssl_ca_certs'] = val.values[0]
         elif val.key == 'Testing' and str_to_bool(val.values[0]):
@@ -168,7 +167,7 @@ def read_config(conf):
             }
 
     collectd.debug("module_config: (%s)" % str(module_config))
-
+    print module_config
     if testing:
         return module_config
 
@@ -300,13 +299,12 @@ def get_optional_metrics(data, endpoint):
         metrics = {}
         transform_text_to_metrics(response, metrics)
         default_dimensions = {'state': data['state'], 'cluster': data['cluster']}
-
         if data['enhanced_metrics']:    # if the bool is true, then exclude metrics that are not required
             for metric in metrics:
                 if metric in data['exclude_optional_metrics']:
                     continue
                 plugin_instance = prepare_plugin_instance(data, default_dimensions,
-                                    ('%s%s' % (',', metrics[metric]['dimensions'])))
+                                    ('%s%s' % (',', metrics[metric].get('dimensions',{}))))
                 prepare_and_dispatch_metric(metrics[metric]['name'], metrics[metric]['value'],
                                                 metrics[metric]['type'], plugin_instance)
         else:
@@ -324,7 +322,8 @@ def transform_text_to_metrics(response, metrics):
     '''
     for line in response.splitlines():
         formatted = line.split(' ')
-
+        if len(formatted) == 1: # When SSL fails
+            break
         if formatted[1] == 'TYPE' and formatted[3] not in ('histogram', 'summary'):
             metric = {'name': str(formatted[2]).replace('_', '.'), 'type': str(formatted[3])}
             metrics[formatted[2]] = metric
@@ -365,7 +364,7 @@ def get_json(data, url):
     response = make_api_call(data, url)
     try:
         if response:
-            return response.json()
+            return json.load(response)
     except ValueError, e:
         collectd.error("ERROR: JSON parsing failed: (%s) %s" % (e, url))
         return
@@ -377,35 +376,39 @@ def get_text(data, url):
     '''
     response = make_api_call(data, url)
     if response:
-        return response.text
+        return response.read()
 
 
 def make_api_call(data, url):
     collectd.debug("GETTING THIS  URL %s" % url)
     try:
-        (certificate, verify) = get_ssl_params(data)
-        response = requests.get(url, verify=verify, cert=certificate, timeout=data['http_timeout'])
+        key_file, cert_file, ca_certs = get_ssl_params(data)
+        opener = urllib2.build_opener(urllib_ssl_handler.HTTPSHandler(
+            key_file=key_file, cert_file=cert_file, ca_certs=ca_certs))
+
+        response = opener.open(url)
         return response
-    except requests.exceptions.RequestException, e:
+    except (urllib2.HTTPError, urllib2.URLError), e:
         collectd.error("ERROR: API call failed: (%s) %s" % (e, url))
-    except requests.exceptions.Timeout, e:
-        collectd.warning("WARNING: API call timed out: (%s) %s" % (e, url))
 
 
 def get_ssl_params(data):
     '''
     Helper method to prepare auth tuple
     '''
-    certificate = None
-    verify = True
+    key_file = None
+    cert_file = None
+    ca_certs = None
+
     ssl_keys = data['ssl_keys']
     if 'ssl_certificate' in ssl_keys and 'ssl_keyfile' in ssl_keys:
-        certificate = (ssl_keys['ssl_certificate'], ssl_keys['ssl_keyfile'])
+        key_file = ssl_keys['ssl_keyfile']
+        cert_file = ssl_keys['ssl_certificate']
 
-    if 'ssl_cert_validation' in ssl_keys:
-        verify = ssl_keys.get('ssl_ca_certs', True) if ssl_keys['ssl_cert_validation'] else False
+    if 'ssl_ca_certs' in ssl_keys:
+        ca_certs = ssl_keys['ssl_ca_certs']
 
-    return (certificate, verify)
+    return (key_file, cert_file, ca_certs)
 
 
 def prepare_and_dispatch_metric(name, value, _type, dimensions):
@@ -437,7 +440,7 @@ def prepare_and_print_metric(name, value, _type, dimensions, plugin_instance):
     return out
 
 
-def format_dimensions(dimensions, more=''):
+def format_dimensions(dimensions, more_dimensions=''):
     '''
     Formats dimensions before fed to collectd plugin instance
     '''
@@ -445,7 +448,7 @@ def format_dimensions(dimensions, more=''):
     formatted.extend(("%s=%s" % (k, v)) for k, v in six.iteritems(dimensions))
     return ('[%s%s]' % (str(formatted).replace('\'', '').
             replace(' ', '').replace("\"", '').replace('[', '').
-                replace(']', ''), '' if len(more) == 1 else more))
+                replace(']', ''), '' if len(more_dimensions) == 1 else more_dimensions))
 
 
 if __name__ == "__main__":
