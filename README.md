@@ -34,10 +34,7 @@ Specify path to keyfile and certificate if certificate based authentication of c
 * ssl_keyfile - path to file
 * ssl_certificate - path to file
 
-Validation of the server's SSL certificates
-* ssl_cert_validation - True/False
-
-Provide a custom file that lists trusted CA certificates, if ssl_cert_validation is enabled
+Provide a custom file that lists trusted CA certificates
 * ssl_ca_certs - path to file
 
 Note that multiple etcd members can be configured in the same file.
