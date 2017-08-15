@@ -1,26 +1,71 @@
 #!/usr/bin/env python
-import sys
+__all__ = ['match_hostname', 'CertificateError']
 import socket
 import ssl
-from six.moves import http_client
-from six.moves import urllib
+import re
+try:
+    from http import client # py3k
+except ImportError:
+    import httplib as client # py < 3.x
 
+try:
+    import urllib2 as request # py < 3.x
+except ImportError:
+    from urllib import request # py3k
 
+# copy-paste from stdlib's ssl.py (py3.2)
 class CertificateError(ValueError):
     pass
 
 
-class HTTPSConnection(http_client.HTTPSConnection):
+def match_hostname(cert, hostname):
+    if not cert:
+        raise ValueError("empty or no certificate")
+    dnsnames = []
+    san = cert.get('subjectAltName', ())
+    for key, value in san:
+        if key == 'DNS':
+            if _dnsname_to_pat(value).match(hostname):
+                return
+            dnsnames.append(value)
+    if not dnsnames:
+        for sub in cert.get('subject', ()):
+            for key, value in sub:
+                if key == 'commonName':
+                    if _dnsname_to_pat(value).match(hostname):
+                        return
+                    dnsnames.append(value)
+    if len(dnsnames) > 1:
+        raise CertificateError("hostname %r "
+            "doesn't match either of %s"
+            % (hostname, ', '.join(map(repr, dnsnames))))
+    elif len(dnsnames) == 1:
+        raise CertificateError("hostname %r "
+            "doesn't match %r"
+            % (hostname, dnsnames[0]))
+    else:
+        raise CertificateError("no appropriate commonName or "
+            "subjectAltName fields were found")
+
+def _dnsname_to_pat(dn):
+    pats = []
+    for frag in dn.split(r'.'):
+        if frag == '*':
+            pats.append('[^.]+')
+        else:
+            frag = re.escape(frag)
+            pats.append(frag.replace(r'\*', '[^.]*'))
+    return re.compile(r'\A' + r'\.'.join(pats) + r'\Z', re.IGNORECASE)
+
+
+class HTTPSConnection(client.HTTPSConnection):
     def __init__(self, host, **kwargs):
         self.ca_certs = kwargs.pop('ca_certs', None)
-        self.checker = kwargs.pop('checker', ssl.match_hostname)
+        self.checker = kwargs.pop('checker', match_hostname)
+        client.HTTPSConnection.__init__(self, host, **kwargs)
 
-        http_client.HTTPSConnection.__init__(self, host, **kwargs)
 
     def connect(self):
-        '''
-        override default version to do cert verification
-        '''
         args = [(self.host, self.port), self.timeout,]
         if hasattr(self, 'source_address'):
             args.append(self.source_address)
@@ -29,13 +74,11 @@ class HTTPSConnection(http_client.HTTPSConnection):
         if getattr(self, '_tunnel_host', None):
             self.sock = sock
             self._tunnel()
-
         kwargs = {}
         if self.ca_certs is not None:
             kwargs.update(
                 cert_reqs=ssl.CERT_REQUIRED,
-                ca_certs=self.ca_certs
-                )
+                ca_certs=self.ca_certs)
         self.sock = ssl.wrap_socket(sock,
                                     keyfile=self.key_file,
                                     certfile=self.cert_file,
@@ -46,13 +89,13 @@ class HTTPSConnection(http_client.HTTPSConnection):
             except CertificateError:
                 self.sock.shutdown(socket.SHUT_RDWR)
                 self.sock.close()
-                raise CertificateError("Certificate Error")
+                raise
 
 
-class HTTPSHandler(urllib.request.HTTPSHandler):
+class HTTPSHandler(request.HTTPSHandler):
     def __init__(self, key_file=None, cert_file=None, ca_certs=None,
-                 checker=ssl.match_hostname):
-        urllib.request.HTTPSHandler.__init__(self)
+                 checker=match_hostname):
+        request.HTTPSHandler.__init__(self)
         self.key_file = key_file
         self.cert_file = cert_file
         self.ca_certs = ca_certs
@@ -68,3 +111,4 @@ class HTTPSHandler(urllib.request.HTTPSHandler):
                  checker=self.checker)
         d.update(kwargs)
         return HTTPSConnection(host, **d)
+__all__.append('HTTPSHandler')
