@@ -6,6 +6,7 @@ import re
 from six.moves import http_client
 from six.moves import urllib
 
+
 class CertificateError(ValueError):
     pass
 
@@ -28,16 +29,17 @@ def match_hostname(cert, hostname):
                         return
                     dnsnames.append(value)
     if len(dnsnames) > 1:
-        raise CertificateError("hostname %r "
-            "doesn't match either of %s"
-            % (hostname, ', '.join(map(repr, dnsnames))))
+        raise CertificateError("hostname %r doesn't match either of %s" % (
+            hostname,
+            ', '.join(map(repr, dnsnames))))
     elif len(dnsnames) == 1:
-        raise CertificateError("hostname %r "
-            "doesn't match %r"
-            % (hostname, dnsnames[0]))
+        raise CertificateError("hostname %r doesn't match %r" % (
+            hostname,
+            dnsnames[0]))
     else:
-        raise CertificateError("no appropriate commonName or "
-            "subjectAltName fields were found")
+        raise CertificateError("no appropriate commonName or \
+                                subjectAltName fields were found")
+
 
 def _dnsname_to_pat(dn):
     pats = []
@@ -56,9 +58,8 @@ class HTTPSConnection(http_client.HTTPSConnection):
         self.checker = kwargs.pop('checker', match_hostname)
         http_client.HTTPSConnection.__init__(self, host, **kwargs)
 
-
     def connect(self):
-        args = [(self.host, self.port), self.timeout,]
+        args = [(self.host, self.port), self.timeout, ]
         if hasattr(self, 'source_address'):
             args.append(self.source_address)
         sock = socket.create_connection(*args)
@@ -103,4 +104,6 @@ class HTTPSHandler(urllib.request.HTTPSHandler):
                  checker=self.checker)
         d.update(kwargs)
         return HTTPSConnection(host, **d)
+
+
 __all__.append('HTTPSHandler')

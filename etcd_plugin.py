@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import urllib2, urllib_ssl_handler
+import urllib2
+import urllib_ssl_handler
 import json
 import collections
 import collectd
@@ -121,7 +122,8 @@ def read_config(conf):
             if len(val.values) == 2:
                 custom_dimensions.update({val.values[0]: val.values[1]})
             else:
-                collectd.warning("WARNING: Check configuration setting for %s" % val.key)
+                collectd.warning("WARNING: Check configuration \
+                                            setting for %s" % val.key)
         elif val.key == 'EnhancedMetrics' and val.values[0]:
             enhanced_metrics = str_to_bool(val.values[0])
         elif val.key == 'IncludeMetric' and val.values[0]:
@@ -152,7 +154,8 @@ def read_config(conf):
 
     module_config = {
             'state': None,
-            'member_id': ("%s:%s" % (plugin_conf['Host'], plugin_conf['Port'])),
+            'member_id': ("%s:%s" % (
+                plugin_conf['Host'], plugin_conf['Port'])),
             'plugin_conf': plugin_conf,
             'cluster': cluster,
             'interval': interval,
@@ -167,11 +170,16 @@ def read_config(conf):
             }
 
     collectd.debug("module_config: (%s)" % str(module_config))
-    print module_config
+    # print module_config
     if testing:
         return module_config
 
-    collectd.register_read(read_metrics, interval, data=module_config, name=module_config['member_id'])
+    collectd.register_read(
+                            read_metrics,
+                            interval,
+                            data=module_config,
+                            name=module_config['member_id']
+    )
 
 
 def str_to_bool(flag):
@@ -182,7 +190,8 @@ def str_to_bool(flag):
     if flag == 'true':
         return True
     elif flag != 'false':
-        collectd.warning("WARNING: REQUIRES BOOLEAN. RECEIVED %s. ASSUMING FALSE." % (str(flag)))
+        collectd.warning("WARNING: REQUIRES BOOLEAN. \
+                RECEIVED %s. ASSUMING FALSE." % (str(flag)))
 
     return False
 
@@ -226,16 +235,27 @@ def get_self_metrics(data, endpoint):
 
     if response:
         data['state'] = LEADER if LEADER == response['state'] else FOLLOWER
-        default_dimensions = {'state': data['state'], 'cluster': data['cluster']}
+        default_dimensions = {
+                'state': data['state'],
+                'cluster': data['cluster']
+        }
         plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
         for key in SELF_METRICS:
             if key in response:
-                prepare_and_dispatch_metric(SELF_METRICS[key].name, response[key],
-                SELF_METRICS[key].type, plugin_instance)
+                prepare_and_dispatch_metric(
+                        SELF_METRICS[key].name,
+                        response[key],
+                        SELF_METRICS[key].type,
+                        plugin_instance
+                )
             else:
-                prepare_and_dispatch_metric(SELF_METRICS[key].name, 0,
-                SELF_METRICS[key].type, plugin_instance)
+                prepare_and_dispatch_metric(
+                    SELF_METRICS[key].name,
+                    0,
+                    SELF_METRICS[key].type,
+                    plugin_instance
+                )
 
 
 def get_store_metrics(data, endpoint):
@@ -246,20 +266,32 @@ def get_store_metrics(data, endpoint):
     response = prepare_url(data, endpoint)
 
     if response:
-        default_dimensions = {'state': data['state'], 'cluster': data['cluster']}
+        default_dimensions = {
+                'state': data['state'],
+                'cluster': data['cluster']
+        }
         plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
         for key in STORE_METRICS:
             if key in response:
-                prepare_and_dispatch_metric(STORE_METRICS[key].name, response[key],
-                STORE_METRICS[key].type, plugin_instance)
+                prepare_and_dispatch_metric(
+                    STORE_METRICS[key].name,
+                    response[key],
+                    STORE_METRICS[key].type,
+                    plugin_instance
+                )
 
-        # Only leader reports operations on the store are global to all the members
+        # Only leader reports operations on the
+        # store are global to all the members
         if data['state'] == LEADER:
             for key in STORE_METRICS_LEADER:
                 if key in response:
-                    prepare_and_dispatch_metric(STORE_METRICS_LEADER[key].name, response[key],
-                    STORE_METRICS_LEADER[key].type, plugin_instance)
+                    prepare_and_dispatch_metric(
+                        STORE_METRICS_LEADER[key].name,
+                        response[key],
+                        STORE_METRICS_LEADER[key].type,
+                        plugin_instance
+                    )
 
 
 def get_leader_metrics(data, endpoint):
@@ -271,20 +303,30 @@ def get_leader_metrics(data, endpoint):
 
     if response:
         for follower, value in six.iteritems(response.get('followers', {})):
-            default_dimensions = {'state': data['state'],
-                                'follower': data[follower][7:],
-                                'cluster': data['cluster']}
+            default_dimensions = {
+                    'state': data['state'],
+                    'follower': data[follower][7:],
+                    'cluster': data['cluster']
+            }
             plugin_instance = prepare_plugin_instance(data, default_dimensions)
 
             for key in LEADER_METRICS_COUNTS:
                 if key in value['counts']:
-                    prepare_and_dispatch_metric(LEADER_METRICS_COUNTS[key].name,
-                    value['counts'][key], LEADER_METRICS_COUNTS[key].type, plugin_instance)
+                    prepare_and_dispatch_metric(
+                        LEADER_METRICS_COUNTS[key].name,
+                        value['counts'][key],
+                        LEADER_METRICS_COUNTS[key].type,
+                        plugin_instance
+                    )
 
             for key in LEADER_METRICS_LATENCY:
                 if key in value['latency']:
-                    prepare_and_dispatch_metric(LEADER_METRICS_LATENCY[key].name,
-                    value['latency'][key], LEADER_METRICS_LATENCY[key].type, plugin_instance)
+                    prepare_and_dispatch_metric(
+                        LEADER_METRICS_LATENCY[key].name,
+                        value['latency'][key],
+                        LEADER_METRICS_LATENCY[key].type,
+                        plugin_instance
+                    )
 
 
 def get_optional_metrics(data, endpoint):
@@ -298,22 +340,41 @@ def get_optional_metrics(data, endpoint):
     if response:
         metrics = {}
         transform_text_to_metrics(response, metrics)
-        default_dimensions = {'state': data['state'], 'cluster': data['cluster']}
-        if data['enhanced_metrics']:    # if the bool is true, then exclude metrics that are not required
+        default_dimensions = {
+                'state': data['state'],
+                'cluster': data['cluster']
+        }
+        # if the bool is true, then exclude metrics that are not required
+        if data['enhanced_metrics']:
             for metric in metrics:
                 if metric in data['exclude_optional_metrics']:
                     continue
-                plugin_instance = prepare_plugin_instance(data, default_dimensions,
-                                    ('%s%s' % (',', metrics[metric].get('dimensions',{}))))
-                prepare_and_dispatch_metric(metrics[metric]['name'], metrics[metric]['value'],
-                                                metrics[metric]['type'], plugin_instance)
+                plugin_instance = prepare_plugin_instance(
+                    data,
+                    default_dimensions,
+                    ('%s%s' % (',', metrics[metric].get('dimensions', {}))))
+                prepare_and_dispatch_metric(
+                    metrics[metric]['name'],
+                    metrics[metric]['value'],
+                    metrics[metric]['type'],
+                    plugin_instance
+                )
         else:
-            for metric in data['include_optional_metrics']:   # include only the required metrics
+            # include only the required metrics
+            for metric in data['include_optional_metrics']:
                 if metric in metrics:
-                    plugin_instance = prepare_plugin_instance(data, default_dimensions,
-                                        ('%s%s' % (',', metrics[metric]['dimensions'])))
-                    prepare_and_dispatch_metric(metrics[metric]['name'], metrics[metric]['value'],
-                                                metrics[metric]['type'], plugin_instance)
+                    plugin_instance = prepare_plugin_instance(
+                        data,
+                        default_dimensions,
+                        ('%s%s' % (',', metrics[metric].get(
+                                        'dimensions',
+                                        {}))))
+                    prepare_and_dispatch_metric(
+                        metrics[metric]['name'],
+                        metrics[metric]['value'],
+                        metrics[metric]['type'],
+                        plugin_instance
+                    )
 
 
 def transform_text_to_metrics(response, metrics):
@@ -322,10 +383,14 @@ def transform_text_to_metrics(response, metrics):
     '''
     for line in response.splitlines():
         formatted = line.split(' ')
-        if len(formatted) == 1: # When SSL fails
+        if len(formatted) == 1:  # When SSL fails
             break
-        if formatted[1] == 'TYPE' and formatted[3] not in ('histogram', 'summary'):
-            metric = {'name': str(formatted[2]).replace('_', '.'), 'type': str(formatted[3])}
+        if formatted[1] == 'TYPE'\
+                and formatted[3] not in ('histogram', 'summary'):
+            metric = {
+                'name': str(formatted[2]).replace('_', '.'),
+                'type': str(formatted[3])
+                }
             metrics[formatted[2]] = metric
             continue
         if len(formatted) == 2:
@@ -334,9 +399,16 @@ def transform_text_to_metrics(response, metrics):
             dimensions = ''
             if len(name_and_dimensions) > 1:
                 name = name_and_dimensions[0]
-                dimensions = name_and_dimensions[1].replace('}', '').replace('\"', '')
+                dimensions = name_and_dimensions[1].replace(
+                    '}',
+                    '').replace(
+                        '\"',
+                        '')
             if name in metrics:
-                metrics[name].update({'value': float(str(formatted[1])), 'dimensions': dimensions})
+                metrics[name].update({
+                    'value': float(str(formatted[1])),
+                    'dimensions': dimensions
+                    })
 
 
 def prepare_plugin_instance(data, default_dimensions, more_dimensions=''):
@@ -345,7 +417,10 @@ def prepare_plugin_instance(data, default_dimensions, more_dimensions=''):
     '''
     # add custom dimensions to the list of dimensions
     default_dimensions.update(data['custom_dimensions'])
-    default_dimensions = format_dimensions(default_dimensions, (more_dimensions))
+    default_dimensions = format_dimensions(
+        default_dimensions,
+        (more_dimensions)
+        )
     return ("%s%s" % (data['member_id'], default_dimensions))
 
 
@@ -428,15 +503,22 @@ def prepare_and_dispatch_metric(name, value, _type, dimensions):
     data_point.meta = {'true': 'true'}
 
     data_point.dispatch()
-    collectd.debug("DISPATCHED: %s" % prepare_and_print_metric(name, value, _type, dimensions, dimensions))
+    collectd.debug("DISPATCHED: %s" % prepare_and_print_metric(
+                    name,
+                    value,
+                    _type,
+                    dimensions))
 
 
-def prepare_and_print_metric(name, value, _type, dimensions, plugin_instance):
+def prepare_and_print_metric(name, value, _type, dimensions):
     '''
     Prints out metrics in string format
     '''
-    out = ("{ name : %s, value : %s, type : %s, dimension : %s, plugin_instance: %s}" %
-            (name, value, _type, dimensions, plugin_instance))
+    out = ("{ name : %s, value : %s, type : %s, dimension : %s}" % (
+                name,
+                value,
+                _type,
+                dimensions))
     return out
 
 
@@ -448,7 +530,8 @@ def format_dimensions(dimensions, more_dimensions=''):
     formatted.extend(("%s=%s" % (k, v)) for k, v in six.iteritems(dimensions))
     return ('[%s%s]' % (str(formatted).replace('\'', '').
             replace(' ', '').replace("\"", '').replace('[', '').
-                replace(']', ''), '' if len(more_dimensions) == 1 else more_dimensions))
+                replace(']', ''),
+                '' if len(more_dimensions) == 1 else more_dimensions))
 
 
 if __name__ == "__main__":
