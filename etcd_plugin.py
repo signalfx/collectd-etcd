@@ -399,11 +399,8 @@ def transform_text_to_metrics(response, metrics):
             dimensions = ''
             if len(name_and_dimensions) > 1:
                 name = name_and_dimensions[0]
-                dimensions = name_and_dimensions[1].replace(
-                    '}',
-                    '').replace(
-                        '\"',
-                        '')
+                dimensions = \
+                    name_and_dimensions[1].replace('}', '').replace('\"', '')
             if name in metrics:
                 metrics[name].update({
                     'value': float(str(formatted[1])),
