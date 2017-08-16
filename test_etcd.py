@@ -70,12 +70,16 @@ mock_config_enhanced_metrics_off.children = [
 
 @mock.patch('etcd_plugin.get_text', mock_api_call)
 def test_optional_metrics_on():
-    etcd_plugin.read_metrics(etcd_plugin.read_config(mock_config_enhanced_metrics_off))
+    etcd_plugin.read_metrics(
+        etcd_plugin.read_config(
+            mock_config_enhanced_metrics_off))
 
 
 @mock.patch('etcd_plugin.get_text', mock_api_call)
 def test_optional_metrics_off():
-    etcd_plugin.read_metrics(etcd_plugin.read_config(mock_config_enhanced_metrics_on))
+    etcd_plugin.read_metrics(
+        etcd_plugin.read_config(
+            mock_config_enhanced_metrics_on))
 
 
 mock_config = mock.Mock()

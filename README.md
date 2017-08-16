@@ -5,7 +5,7 @@ An etcd [collectd](http://www.collectd.org/) plugin which users can use to send 
 ## Installation
 
 * Checkout this repository somewhere on your system accessible by collectd. The suggested location is `/usr/share/collectd/`
-* Install the Python requirements with sudo pip install -r requirements.txt
+* Install the Python requirements with sudo ```pip install -r requirements.txt```
 * Configure the plugin (see below)
 * Restart collectd
 
@@ -34,10 +34,7 @@ Specify path to keyfile and certificate if certificate based authentication of c
 * ssl_keyfile - path to file
 * ssl_certificate - path to file
 
-Validation of the server's SSL certificates
-* ssl_cert_validation - True/False
-
-Provide a custom file that lists trusted CA certificates, if ssl_cert_validation is enabled
+Provide a custom file that lists trusted CA certificates, required when keyfile and certificate are provided
 * ssl_ca_certs - path to file
 
 Note that multiple etcd members can be configured in the same file.
