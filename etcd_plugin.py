@@ -1,11 +1,13 @@
 #!/usr/bin/env python
-import urllib2
-import urllib_ssl_handler
 import json
 import collections
 import collectd
+import requests
 import six
+import urllib3
 
+# Prevents spamming when not validating certificates.
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 LEADER = "StateLeader"
 FOLLOWER = "StateFollower"
@@ -108,7 +110,9 @@ def read_config(conf):
     http_timeout = DEFAULT_API_TIMEOUT
 
     required_keys = frozenset(('Host', 'Port'))
-    ssl_keys = {}
+    ssl_keys = {
+        'ssl_cert_validation': True
+    }
     testing = False
 
     for val in conf.children:
@@ -136,6 +140,11 @@ def read_config(conf):
             ssl_keys['ssl_certificate'] = val.values[0]
         elif val.key == 'ssl_ca_certs' and val.values[0]:
             ssl_keys['ssl_ca_certs'] = val.values[0]
+        elif val.key == "ssl_cert_validation" and val.values[0]:
+            # Doesn't use str_to_bool because the function defaults to false and
+            # we want to default to true.
+            if val.values[0].strip().lower() == 'false':
+                ssl_keys['ssl_cert_validation'] = False
         elif val.key == 'Testing' and str_to_bool(val.values[0]):
             testing = True
 
@@ -436,10 +445,9 @@ def get_json(data, url):
     response = make_api_call(data, url)
     try:
         if response:
-            return json.load(response)
-    except ValueError, e:
+            return response.json()
+    except ValueError as e:
         collectd.error("ERROR: JSON parsing failed: (%s) %s" % (e, url))
-        return
 
 
 def get_text(data, url):
@@ -448,19 +456,30 @@ def get_text(data, url):
     '''
     response = make_api_call(data, url)
     if response:
-        return response.read()
+        return response.text
 
 
 def make_api_call(data, url):
-    collectd.debug("GETTING THIS  URL %s" % url)
+    collectd.debug("GETTING THIS URL %s" % url)
     try:
-        key_file, cert_file, ca_certs = get_ssl_params(data)
-        opener = urllib2.build_opener(urllib_ssl_handler.HTTPSHandler(
-            key_file=key_file, cert_file=cert_file, ca_certs=ca_certs))
+        key_file, cert_file, ca_certs, cert_validation = get_ssl_params(data)
 
-        response = opener.open(url)
-        return response
-    except (urllib2.HTTPError, urllib2.URLError), e:
+        args = {
+            "url": url,
+            "verify": True,
+        }
+
+        if key_file and cert_file:
+            args["cert"] = (cert_file, key_file)
+
+        if ca_certs:
+            args["verify"] = ca_certs
+
+        if not cert_validation:
+            args["verify"] = False
+
+        return requests.get(**args)
+    except requests.RequestException as e:
         collectd.error("ERROR: API call failed: (%s) %s" % (e, url))
 
 
@@ -468,11 +487,13 @@ def get_ssl_params(data):
     '''
     Helper method to prepare auth tuple
     '''
+    ssl_keys = data['ssl_keys']
+
     key_file = None
     cert_file = None
     ca_certs = None
+    cert_validation = ssl_keys['ssl_cert_validation']
 
-    ssl_keys = data['ssl_keys']
     if 'ssl_certificate' in ssl_keys and 'ssl_keyfile' in ssl_keys:
         key_file = ssl_keys['ssl_keyfile']
         cert_file = ssl_keys['ssl_certificate']
@@ -480,7 +501,7 @@ def get_ssl_params(data):
     if 'ssl_ca_certs' in ssl_keys:
         ca_certs = ssl_keys['ssl_ca_certs']
 
-    return (key_file, cert_file, ca_certs)
+    return (key_file, cert_file, ca_certs, cert_validation)
 
 
 def prepare_and_dispatch_metric(name, value, _type, dimensions):

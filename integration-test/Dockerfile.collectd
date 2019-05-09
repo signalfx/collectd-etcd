@@ -7,10 +7,6 @@ ENV COLLECTD_INTERVAL=3 COLLECTD_HOSTNAME=etcd-test DISABLE_AGGREGATION=true DIS
 RUN apt-get update &&\
     apt-get install -yq netcat curl
 
-CMD /.docker/setup_etcd
-ADD integration-test/setup_etcd /.docker/setup_etcd
-
 ## The context of the image build should be the root dir of this repo!!
 ADD etcd_plugin.py /opt/collectd-etcd/
-ADD urllib_ssl_handler.py /opt/collectd-etcd/
 ADD integration-test/20-etcd-test.conf /etc/collectd/managed_config/

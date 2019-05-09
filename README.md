@@ -12,7 +12,7 @@ An etcd [collectd](http://www.collectd.org/) plugin which users can use to send 
 ## Requirements
 
 * collectd 4.9 or later (for the Python plugin)
-* Python 2.6 or later
+* Python 2.7 or later
 * etcd 2.0.8 or later
 
 ## Configuration
@@ -33,6 +33,7 @@ Optional configurations keys include:
 Specify path to keyfile and certificate if certificate based authentication of clients is enabled on your etcd server
 * ssl_keyfile - path to file
 * ssl_certificate - path to file
+* ssl_cert_validation - if False, don't require SSL certificate validation (default True to validate certificates)
 
 Provide a custom file that lists trusted CA certificates, required when keyfile and certificate are provided
 * ssl_ca_certs - path to file
