@@ -1,8 +1,9 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 import httplib
 import json
 from time import time, sleep
-from subprocess import call
 
 # Quick and dirty integration test for multiple broker support for etcd for
 # one collectd instance. This test script is intended to be run with
@@ -12,10 +13,11 @@ from subprocess import call
 # integration tests if so desired.
 
 ETCD_HOSTS = [
+    'etcd208',
     'etcd238',
     'etcd310',
     'etcd324',
-    'etcd208',
+    'etcd324-tls-unverified',
 ]
 TIMEOUT_SECS = 60
 
@@ -32,10 +34,10 @@ def get_metric_data():
 def wait_for_metrics_from_each_member():
     start = time()
     for member in ETCD_HOSTS:
-        print 'Waiting for metrics from member %s...' % (member,)
+        print('Waiting for metrics from member %s...' % (member,))
         eventually_true(lambda: any([member in m.get('plugin_instance').split(':')[0] for m in get_metric_data()]),
                         TIMEOUT_SECS - (time() - start))
-        print 'Found!'
+        print('Found!')
 
 
 def eventually_true(f, timeout_secs):
