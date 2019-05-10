@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import json
 import collections
+
 import collectd
 import requests
 import six
@@ -141,8 +141,8 @@ def read_config(conf):
         elif val.key == 'ssl_ca_certs' and val.values[0]:
             ssl_keys['ssl_ca_certs'] = val.values[0]
         elif val.key == "ssl_cert_validation" and val.values[0]:
-            # Doesn't use str_to_bool because the function defaults to false and
-            # we want to default to true.
+            # Doesn't use str_to_bool because the function defaults to
+            # false and we want to default to true.
             if val.values[0].strip().lower() == 'false':
                 ssl_keys['ssl_cert_validation'] = False
         elif val.key == 'Testing' and str_to_bool(val.values[0]):
