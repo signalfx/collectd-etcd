@@ -12,3 +12,4 @@ status=$?
 docker-compose down
 
 printf $status
+exit $status

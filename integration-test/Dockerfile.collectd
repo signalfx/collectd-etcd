@@ -10,3 +10,4 @@ RUN apt-get update &&\
 ## The context of the image build should be the root dir of this repo!!
 ADD etcd_plugin.py /opt/collectd-etcd/
 ADD integration-test/20-etcd-test.conf /etc/collectd/managed_config/
+ADD integration-test/certs/* /opt/testing/certs/
