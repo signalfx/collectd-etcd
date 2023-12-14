@@ -1,3 +1,9 @@
+# :warning: This plugin is deprecated.
+
+etcd no longer relies on a bespoke REST API to expose statistics and instead relies on a Prometheus endpoint.
+
+Please use this [documentation guide](https://etcd.io/docs/v3.5/metrics/) to scrape etcd metrics.
+
 # collectd etcd Plugin
 
 An etcd [collectd](http://www.collectd.org/) plugin which users can use to send metrics from etcd instances to SignalFx
